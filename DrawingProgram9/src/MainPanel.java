@@ -988,6 +988,45 @@ public class MainPanel extends JPanel {
 			}
 		}
 		
+		public void sendLayersToServer(Connection connection) {
+			for (Layer l: drawingData.layers) {
+				consolePanel.tellUser("Sending layer to server: " + l.name);
+				connection.addLayerWithImage(myID, l.name, l.i);
+			}
+			connection.outStream.println("DONE");
+			connection.outStream.flush();
+		}
+		
+		public void correctLayerNames(Connection connection) {
+			String in = "";
+			try {
+				in = connection.inStream.readLine();
+			} catch(Exception e) {
+				consolePanel.tellUser("Connection error while correcting layer names");
+				consolePanel.tellUser("Error: " + e);
+			}
+			while (in.startsWith("RL")) {
+				String[] processedIn = in.split(";");
+				String oldName = processedIn[2];
+				String newName = processedIn[3];
+				consolePanel.tellUser("Renaming " + oldName + " to " + newName + ".");
+				int oldLayerIndex = controlPanel.getCurrentLayerSelectIndex();
+				for (Layer l: drawingData.layers) {
+					if (l.name.equals(oldName)) {
+						l.name = newName;
+						controlPanel.refigureLayers();
+						controlPanel.setCurrentLayerSelectIndex(oldLayerIndex);
+					}
+				}
+				try {
+					in = connection.inStream.readLine();
+				} catch(Exception e) {
+					consolePanel.tellUser("Connection error while correcting layer names");
+					consolePanel.tellUser("Error: " + e);
+				}
+			}
+		}
+		
 		public void connectToServer(String ip, int port) {
 			try {
 				String in; 
@@ -1001,28 +1040,8 @@ public class MainPanel extends JPanel {
 				connection.otherID = myID;
 				consolePanel.tellUser("We are connection number: " + myID);
 				correctDimensions(connection);
-				for (Layer l: drawingData.layers) {
-					consolePanel.tellUser("Sending layer to server: " + l.name);
-					connection.addLayerWithImage(myID, l.name, l.i);
-				}
-				connection.outStream.println("DONE");
-				connection.outStream.flush();
-				while ((in = connection.inStream.readLine()).startsWith("RL")) {
-					Object currentlySelectedLayer = controlPanel.getCurrentLayer();
-					String[] processedIn = in.split(";");
-					int receivedID = Integer.parseInt(processedIn[1]);
-					String oldName = processedIn[2];
-					String newName = processedIn[3];
-					consolePanel.tellUser("Renaming " + oldName + " to " + newName + ".");
-					int oldLayerIndex = controlPanel.getCurrentLayerSelectIndex();
-					for (Layer l: drawingData.layers) {
-						if (l.name.equals(oldName)) {
-							l.name = newName;
-							controlPanel.refigureLayers();
-							controlPanel.setCurrentLayerSelectIndex(oldLayerIndex);
-						}
-					}
-				}
+				sendLayersToServer(connection);
+				correctLayerNames(connection);
 				connection.start();
 			} catch (Exception e) {
 				consolePanel.tellUser("A connection error occurred.");
