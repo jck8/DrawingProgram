@@ -833,7 +833,7 @@ public class MainPanel extends JPanel {
 				}
 			}
 		}
-//Test
+
 		public void sendNewCurve(int ident, int startX, int startY, int lineWidth, Color color, boolean erase, int layer) {
 			for (Connection connection: connections) {
 				if (ident != connection.otherID) {
