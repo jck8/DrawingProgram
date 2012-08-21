@@ -29,8 +29,10 @@ public class MainPanel extends JPanel {
 	Thread connectionThread = null;
 	Thread serverThread = null;
 	Menu menuBar = new Menu();
+	JPanel bgBox;
 	
 	public MainPanel(JFrame pw, File file, Dimension d) {
+		        
 		parentWindow = pw;
 		setLayout(new BorderLayout());
 		drawingData = new DrawingData();
@@ -43,8 +45,18 @@ public class MainPanel extends JPanel {
 			drawingSize = new Dimension(1000, 1000);
 			drawingPanel = new DrawingPanel();
 			drawingPanel.setPreferredSize(drawingSize);
+			drawingPanel.setMaximumSize(drawingSize);
+			drawingPanel.setMinimumSize(drawingSize);
 		}
-		scroller = new JScrollPane(drawingPanel);
+		System.out.println("DrawingSize = " + drawingSize);
+		bgBox = new JPanel();
+		bgBox.setLayout(new BoxLayout(bgBox, BoxLayout.Y_AXIS));
+		bgBox.setBackground(Color.lightGray);
+		bgBox.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        bgBox.add(Box.createVerticalGlue());
+        bgBox.add(drawingPanel);
+        bgBox.add(Box.createVerticalGlue());
+		scroller = new JScrollPane(bgBox);
 		controlPanel = new ControlPanel();
 		consolePanel = new ConsolePanel();
 		add(scroller, BorderLayout.CENTER);
@@ -64,7 +76,14 @@ public class MainPanel extends JPanel {
 		remove(scroller);
 		drawingPanel = new DrawingPanel();
 		drawingPanel.setPreferredSize(d);
-		scroller = new JScrollPane(drawingPanel);
+		bgBox = new JPanel();
+		bgBox.setLayout(new BoxLayout(bgBox, BoxLayout.Y_AXIS));
+		bgBox.setBackground(Color.lightGray);
+		bgBox.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        bgBox.add(Box.createVerticalGlue());
+        bgBox.add(drawingPanel);
+        bgBox.add(Box.createVerticalGlue());
+		scroller = new JScrollPane(bgBox);
 		add(scroller);
 		validate();
 	}
@@ -368,7 +387,6 @@ public class MainPanel extends JPanel {
 				}
 			}
 		}
-
 		
 		public void writeDrawingToFile(File file) {
 			FileWriter fw;
@@ -1343,12 +1361,23 @@ public class MainPanel extends JPanel {
 	}
 
 	public class DrawingPanel extends JPanel {
+	    public Dimension getMinimumSize() {
+	        return getPreferredSize();
+	    }
+
+	    public Dimension getMaximumSize() {
+	        return getPreferredSize();
+	    }
+
+	    /*public Dimension getPreferredSize() {
+	        return new Dimension(100, 100);
+	    }*/
+
 		public DrawingPanel() {
 			setBackground(Color.WHITE);
 
 			addMouseListener(new MouseAdapter() {
 				public void mousePressed(MouseEvent evt) {
-					setSize(new Dimension(2000, 2000));
 					validate();
 					drawingData.handleMouseDown(evt);
 				}
@@ -1366,7 +1395,7 @@ public class MainPanel extends JPanel {
 			if (!drawingData.firstLayerAdded) {
 				drawingData.panelWidth = getWidth();
 				drawingData.panelHeight = getHeight();
-				System.out.println("Init: " + drawingData.panelWidth);
+				System.out.println("Init: " + drawingData.panelHeight);
 				drawingSize = new Dimension(drawingData.panelWidth, drawingData.panelHeight);
 				drawingData.layers[0] = new Layer(drawingData.panelWidth, drawingData.panelHeight, "Layer 0");
 				drawingData.layers[0].id = drawingData.nextLayerID;
