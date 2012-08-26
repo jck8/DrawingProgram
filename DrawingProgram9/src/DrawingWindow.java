@@ -1,5 +1,6 @@
 import javax.swing.*;
 
+
 import java.io.File;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
@@ -7,7 +8,7 @@ import java.awt.Window;
 import java.awt.event.*;
 import java.awt.*;
 public class DrawingWindow extends JFrame {
-
+	public static final String DEFAULT_PORT = "21476";
 	public final int defaultWindowWidth = 1200;
 	public final int defaultWindowHeight = 800;
 	public static WindowTracker wt = new WindowTracker();
@@ -54,6 +55,43 @@ public class DrawingWindow extends JFrame {
 		kfm.addKeyEventDispatcher(new KeyDispatcher(keyPanel, kfm));
 	}
 
+	
+	public static void showConnectDialog() {
+		ConnectPanel connectPanel = new ConnectPanel();
+		int result = JOptionPane.showConfirmDialog(null, connectPanel, "Enter connection details...", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+		if (result == JOptionPane.OK_OPTION) {
+			final String ip = connectPanel.getIP();
+			final int port = Integer.parseInt(connectPanel.getPort());
+			new DrawingWindow(ip, port);
+		}
+	}
+	
+	public static class ConnectPanel extends JPanel {
+		JTextField ipField = new JTextField("127.0.0.1");
+		JTextField portField = new JTextField(DEFAULT_PORT);
+		public ConnectPanel() {
+			JLabel message = new JLabel("Enter connection details...");
+			JLabel ipLabel = new JLabel("IP:");
+			JLabel portLabel = new JLabel("Port:");
+			JPanel ipPanel = new JPanel();
+			JPanel portPanel = new JPanel();
+			ipPanel.add(ipLabel);
+			ipPanel.add(ipField);
+			portPanel.add(portLabel);
+			portPanel.add(portField);
+			setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+			add(message);
+			add(ipPanel);
+			add(portPanel);
+		}
+		public String getIP() {
+			return ipField.getText();
+		}
+		public String getPort() {
+			return portField.getText();
+		}
+	}
+	
 	public static boolean open() {
 		JFileChooser fc = new JFileChooser();
 		if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
@@ -118,7 +156,7 @@ public class DrawingWindow extends JFrame {
 			});
 			connectButton.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
-					
+					showConnectDialog();
 				}
 			});
 		}	
@@ -156,7 +194,7 @@ public class DrawingWindow extends JFrame {
 
 	public DrawingWindow() {
 		addWindowListener(wt);
-		mainPanel = new MainPanel(this, null, null, null);
+		mainPanel = new MainPanel(this, null, null, null, -1);
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setContentPane(mainPanel);
 		setSize(defaultWindowWidth, defaultWindowHeight);
@@ -169,7 +207,7 @@ public class DrawingWindow extends JFrame {
 
 	public DrawingWindow(Dimension drawingSize, File file) {
 		addWindowListener(wt);
-		mainPanel = new MainPanel(this, file, drawingSize, null);
+		mainPanel = new MainPanel(this, file, drawingSize, null, -1);
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setContentPane(mainPanel);
 		setSize(defaultWindowWidth, defaultWindowHeight);
@@ -178,6 +216,17 @@ public class DrawingWindow extends JFrame {
 		if (file != null) {
 			setTitle(file.getName());
 		}
+		setVisible(true);
+	}
+	
+	public DrawingWindow(String ip, int port) {
+		addWindowListener(wt);
+		mainPanel = new MainPanel(this, null, null, ip, port);
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		setContentPane(mainPanel);
+		setSize(defaultWindowWidth, defaultWindowHeight);
+		setLocation(100, 100);
+		setJMenuBar(mainPanel.menuBar);
 		setVisible(true);
 	}
 

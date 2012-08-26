@@ -6,7 +6,6 @@ import java.util.LinkedList;
 import java.net.*;
 import java.io.*;
 import java.awt.image.*;
-import java.awt.geom.*;
 import java.io.File;
 import java.util.Iterator;
 import javax.imageio.*;
@@ -31,15 +30,16 @@ public class MainPanel extends JPanel {
 	Menu menuBar = new Menu();
 	JPanel bgBox;
 	
-	public MainPanel(DrawingWindow pw, File file, Dimension d, String ip) {
+	public MainPanel(DrawingWindow pw, File file, Dimension d, String ip, int port) {
 		        
 		parentWindow = pw;
 		setLayout(new BorderLayout());
 		drawingData = new DrawingData();
+		drawingData.container = this;
+
 		if (d != null) {
 			drawingSize = d;
 			drawingPanel = new DrawingPanel();
-			drawingData.container = this;
 			drawingPanel.setPreferredSize(drawingSize);
 		} else {
 			drawingSize = new Dimension(1000, 1000);
@@ -66,9 +66,14 @@ public class MainPanel extends JPanel {
 			userResponder.openFile(file);
 			currentFile = file;
 		}
+		if (ip != null) {
+			userResponder.beginConnection(ip, port);
+		}
 		drawingData.setNewCursor();
 		menuBar.save.setEnabled(false);
+
 		validate();
+
 	}
 	
 	public void resizeDrawingPanel(Dimension d) {
@@ -555,7 +560,6 @@ public class MainPanel extends JPanel {
 		public void moveLayerBack() {
 			Object currentItem = controlPanel.layerSelect.getSelectedItem();
 			int currentLayer = controlPanel.getCurrentLayer();
-			int maxLayer = controlPanel.getMaxLayer();
 			if (currentLayer > 0) {
 				drawingData.swapLayers(currentLayer, currentLayer-1);
 				controlPanel.refigureLayers();
@@ -571,20 +575,25 @@ public class MainPanel extends JPanel {
 			ConnectPanel connectPanel = new ConnectPanel();
 			int result = JOptionPane.showConfirmDialog(null, connectPanel, "Enter connection details...", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
 			if (result == JOptionPane.OK_OPTION) {
-				final String ip = connectPanel.getIP();
-				final int port = Integer.parseInt(connectPanel.getPort());
-				connectionThread = new Thread() {
-					public void run() {
-						netController.connectToServer(ip, port);
-					}
-				};
-				connectionThread.start();
-				connectedToServer = true;
-				menuBar.connect.setText("Disconnect...");
-				menuBar.server.setEnabled(false);
-				controlPanel.connectButton.setText("End Connection");
-				controlPanel.serverButton.setEnabled(false);
+				String ip = connectPanel.getIP();
+				int port = Integer.parseInt(connectPanel.getPort());
+				beginConnection(ip, port);
 			}
+		}
+		
+		public void beginConnection(final String ip, final int port) {
+
+			connectionThread = new Thread() {
+				public void run() {
+					netController.connectToServer(ip, port);
+				}
+			};
+			connectionThread.start();
+			connectedToServer = true;
+			menuBar.connect.setText("Disconnect...");
+			menuBar.server.setEnabled(false);
+			controlPanel.connectButton.setText("End Connection");
+			controlPanel.serverButton.setEnabled(false);
 		}
 
 		public void toggleConnect() {
@@ -1013,12 +1022,18 @@ public class MainPanel extends JPanel {
 			if (otherHeight > myHeight) {
 				newHeight = otherHeight;
 			}
+			consolePanel.tellUser("Correcting dimensions within correctDimensions");
 			if (newHeight != myHeight || newWidth != myWidth) {
 				Dimension newDim = new Dimension(newWidth, newHeight);
 				drawingData.resizeAllLayers(newDim);
+				consolePanel.tellUser("Layers resized within correctDimensions");
 				drawingData.panelWidth = newDim.width;
 				drawingData.panelHeight = newDim.height;
+				consolePanel.tellUser("Resizing drawing Panel");
+				System.out.println("drawingData.container: " + drawingData.container);
+				consolePanel.tellUser("drawingData.container exists");
 				drawingData.container.resizeDrawingPanel(newDim);
+
 			}
 		}
 		
@@ -1063,7 +1078,6 @@ public class MainPanel extends JPanel {
 		
 		public void connectToServer(String ip, int port) {
 			try {
-				String in; 
 				Socket socket = new Socket(ip, port);
 				connected = true;
 				Connection connection = new Connection(socket);
@@ -1074,10 +1088,15 @@ public class MainPanel extends JPanel {
 				connection.otherID = myID;
 				consolePanel.tellUser("We are connection number: " + myID);
 				correctDimensions(connection);
+				consolePanel.tellUser("Dimensions corrected");
 				sendLayersToServer(connection);
+				consolePanel.tellUser("Layers sent");
 				correctLayerNames(connection);
+				consolePanel.tellUser("Layer names corrected");
 				connection.start();
+				consolePanel.tellUser("Connection thread started");
 			} catch (Exception e) {
+				consolePanel.tellUser("connectToServer");
 				consolePanel.tellUser("A connection error occurred.");
 				consolePanel.tellUser("Error: " + e);
 			}
@@ -1269,7 +1288,6 @@ public class MainPanel extends JPanel {
 				int layer;
 				String in;
 				String[] processedIn;
-				String out;
 				int receivedID;
 				boolean erase;
 				try {
