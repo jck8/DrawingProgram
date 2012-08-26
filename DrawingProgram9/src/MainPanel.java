@@ -31,7 +31,7 @@ public class MainPanel extends JPanel {
 	Menu menuBar = new Menu();
 	JPanel bgBox;
 	
-	public MainPanel(JFrame pw, File file, Dimension d) {
+	public MainPanel(DrawingWindow pw, File file, Dimension d, String ip) {
 		        
 		parentWindow = pw;
 		setLayout(new BorderLayout());
@@ -51,11 +51,11 @@ public class MainPanel extends JPanel {
 		System.out.println("DrawingSize = " + drawingSize);
 		bgBox = new JPanel();
 		bgBox.setLayout(new BoxLayout(bgBox, BoxLayout.Y_AXIS));
-		bgBox.setBackground(Color.lightGray);
 		bgBox.setAlignmentX(JComponent.CENTER_ALIGNMENT);
         bgBox.add(Box.createVerticalGlue());
         bgBox.add(drawingPanel);
         bgBox.add(Box.createVerticalGlue());
+		bgBox.setBackground(Color.lightGray);
 		scroller = new JScrollPane(bgBox);
 		controlPanel = new ControlPanel();
 		consolePanel = new ConsolePanel();
@@ -267,17 +267,23 @@ public class MainPanel extends JPanel {
 			name = generateLayerName(name);
 			w = img.getWidth();
 			h = img.getHeight();
+			System.out.println("Adding layer " + name);
 			newLayer = drawingData.addLayer(w, h, name);
+			System.out.println("Layer " + name + " added");
 			System.out.println("w="+w);
 			System.out.println("h="+h);
 			newLayer.i = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+			System.out.println("Setting RGBs for " + name);
 			for (int x = 0; x < w; x++) {
 				for (int y = 0; y < h; y++) {
 					rgb = img.getRGB(x, y);
 					newLayer.i.setRGB(x, y, rgb);
 				}
 			}
+			System.out.println("Set RGBs for " + name);
+			System.out.println("Selected item in insertImage: " + controlPanel.layerSelect.getSelectedItem());
 			controlPanel.refigureLayers();
+			System.out.println("Layers refigured for " + name);
 			drawingPanel.repaint();
 		}
 		
@@ -318,6 +324,7 @@ public class MainPanel extends JPanel {
 				InputStream is = new ByteArrayInputStream(imageText.getBytes());
 				img = ImageIO.read(is);
 				System.out.println("Width:" + img.getWidth() + ". Height: " + img.getHeight());
+				System.out.println("About to insert Image");
 				insertImage(img, currentLayerName);
 				System.out.println("Inserted image");
 				drawingPanel.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
@@ -407,6 +414,7 @@ public class MainPanel extends JPanel {
 				synchronized(file) {
 					for (Layer layer: drawingData.layers) {
 						pw.print("!NAMEIS:" + layer.name + "!");
+						System.out.println("Saving layer " + layer.name);
 						pw.close();
 						output.seek(file.length());
 						writer.setOutput(output);
@@ -745,10 +753,18 @@ public class MainPanel extends JPanel {
 		public void refigureLayers() {
 			Object oldItem = layerSelect.getSelectedItem();
 			layerSelect.removeAllItems();
+			System.out.println("refigureLayers about to enter insertion loop");
 			for (Layer layer: drawingData.layers) {
 				layerSelect.insertItemAt(layer.name, 0);
 			}
-			layerSelect.setSelectedItem(oldItem);
+			System.out.println("refigureLayers exited insertion loop");
+			System.out.println("Selected item: " + oldItem);
+			if (oldItem == null) {
+				layerSelect.setSelectedIndex(0);
+			} else {
+				layerSelect.setSelectedItem(oldItem);
+			}
+			System.out.println("refigureLayers setSelectedItem");
 			refigureLayerButtons();
 		}
 		public void refigureLayerButtons() {
@@ -1369,10 +1385,6 @@ public class MainPanel extends JPanel {
 	        return getPreferredSize();
 	    }
 
-	    /*public Dimension getPreferredSize() {
-	        return new Dimension(100, 100);
-	    }*/
-
 		public DrawingPanel() {
 			setBackground(Color.WHITE);
 
@@ -1587,7 +1599,8 @@ public class MainPanel extends JPanel {
 			if (!layers[controlPanel.getCurrentLayer()].visible && !menuBar.colorPicker.isSelected()) {
 				JOptionPane.showMessageDialog(null, "The current layer is invisible.", "Can't draw there", JOptionPane.ERROR_MESSAGE);
 			} else if (menuBar.colorPicker.isSelected()) {
-				userResponder.changeColor(getColorAt(x, y));
+				if (x<drawingPanel.getWidth() && x>0 && y<drawingPanel.getHeight() && y>0)
+					userResponder.changeColor(getColorAt(x, y));
 			} else {
 				lineWidth = controlPanel.getLineWidth();
 				lastX = x;
@@ -1620,7 +1633,8 @@ public class MainPanel extends JPanel {
 				}
 				drawingPanel.repaint();
 			} else if (menuBar.colorPicker.isSelected()) {
-				userResponder.changeColor(getColorAt(x, y));
+				if (x<drawingPanel.getWidth() && x>0 && y<drawingPanel.getHeight() && y>0)
+					userResponder.changeColor(getColorAt(x, y));
 			}
 		}
 		public void resizeAllLayers(Dimension newSize) {

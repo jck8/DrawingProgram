@@ -10,15 +10,17 @@ public class DrawingWindow extends JFrame {
 
 	public final int defaultWindowWidth = 1200;
 	public final int defaultWindowHeight = 800;
-	
+	public static WindowTracker wt = new WindowTracker();
+	static JPanel keyPanel;
 	MainPanel mainPanel = null;
 	public static void main(String[] args) {
 		//JFrame window = new DrawingWindow();
-		newWindow();
-		JPanel keyPanel = new JPanel();
+		wt.setInitFrame(displayInitialWindow());
+		keyPanel = new JPanel();
 		keyPanel.addKeyListener(new KeyAdapter() {
 			public void keyPressed(KeyEvent e) {
-				DrawingWindow w;
+				Window wind;
+				DrawingWindow dw;
 				int key = e.getKeyCode();
 				int mods = e.getModifiersEx();
 				if ((mods & KeyEvent.META_DOWN_MASK) == KeyEvent.META_DOWN_MASK && e.getID() == KeyEvent.KEY_PRESSED) { //If the command key is being held down
@@ -30,17 +32,20 @@ public class DrawingWindow extends JFrame {
 					case KeyEvent.VK_O: 
 						open();
 						break;
-					case KeyEvent.VK_W: 
-						w = (DrawingWindow)KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
-						w.setVisible(false);
-						w.dispose();
+					case KeyEvent.VK_W:
+						wind = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
+						wind.setVisible(false);
+						wind.dispose();
 						break;
 					case KeyEvent.VK_S:
-						w = (DrawingWindow)KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
-						if (w.mainPanel != null) {
-							w.mainPanel.userResponder.save();
+						wind = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
+						if (wind instanceof DrawingWindow) {
+							dw = (DrawingWindow)wind;
+							if (dw.mainPanel != null) {
+								dw.mainPanel.userResponder.save();
+							}
 						}
-						break;
+						break;		
 					}						
 				}
 			}
@@ -48,15 +53,31 @@ public class DrawingWindow extends JFrame {
 		KeyboardFocusManager kfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
 		kfm.addKeyEventDispatcher(new KeyDispatcher(keyPanel, kfm));
 	}
-	
-	public static void open() {
+
+	public static boolean open() {
 		JFileChooser fc = new JFileChooser();
 		if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
 			File file = fc.getSelectedFile();
 			new DrawingWindow(null, file);
+			return true;
+		} else {
+			return false;
 		}
 	}
-	
+
+	public static JFrame displayInitialWindow() {
+		JFrame initFrame = new JFrame();
+		initFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		InitPanel initPanel = new InitPanel();
+		initFrame.setContentPane(initPanel);
+		initFrame.pack();
+		initFrame.setLocationRelativeTo(null);
+		System.out.println("Height: " + initPanel.getHeight() + ". Width: " + initPanel.getWidth());
+		initFrame.setVisible(true);
+		initFrame.addWindowListener(wt);
+		return initFrame;
+	}
+
 	public static void newWindow() {
 		NewPanel newPanel = new NewPanel();
 		int result = JOptionPane.showConfirmDialog(null, newPanel, "New Drawing", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
@@ -65,7 +86,48 @@ public class DrawingWindow extends JFrame {
 			new DrawingWindow(drawingSize, null);
 		}
 	}
-	
+
+	public static class InitPanel extends JPanel {
+		public InitPanel() {
+			JLabel message = new JLabel("Select an option:");
+			JButton newDrawingButton = new JButton("New Drawing...");
+			JButton openButton = new JButton("Open file...");
+			JButton connectButton = new JButton("Connect to server...");
+			JButton quitButton = new JButton("Quit...");
+			setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+			setAlignmentX(Component.CENTER_ALIGNMENT);
+			addComponent(message);
+			addComponent(newDrawingButton);
+			addComponent(openButton);
+			addComponent(connectButton);
+			addComponent(quitButton);
+			newDrawingButton.addActionListener(new ActionListener() { 
+				public void actionPerformed(ActionEvent e) {
+					newWindow();
+				}
+			});
+			openButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					open();
+				}
+			});
+			quitButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					System.exit(0);
+				}
+			});
+			connectButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					
+				}
+			});
+		}	
+		public void addComponent(JComponent c) {
+			c.setAlignmentX(Component.CENTER_ALIGNMENT);
+			add(c);
+		}
+	}
+
 	public static class NewPanel extends JPanel {
 		JTextField widthField = new JTextField("1000");
 		JTextField heightField = new JTextField("1000");
@@ -91,21 +153,24 @@ public class DrawingWindow extends JFrame {
 			return Integer.parseInt(heightField.getText());
 		}
 	}
-	
+
 	public DrawingWindow() {
-		mainPanel = new MainPanel(this, null, null);
-		//setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		addWindowListener(wt);
+		mainPanel = new MainPanel(this, null, null, null);
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setContentPane(mainPanel);
 		setSize(defaultWindowWidth, defaultWindowHeight);
 		setLocation(100, 100);
 		setJMenuBar(mainPanel.menuBar);
 		setTitle("New drawing");
 		setVisible(true);
+		addWindowListener(wt);
 	}
 
 	public DrawingWindow(Dimension drawingSize, File file) {
-		mainPanel = new MainPanel(this, file, drawingSize);
-		//setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		addWindowListener(wt);
+		mainPanel = new MainPanel(this, file, drawingSize, null);
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setContentPane(mainPanel);
 		setSize(defaultWindowWidth, defaultWindowHeight);
 		setLocation(100, 100);
@@ -115,7 +180,7 @@ public class DrawingWindow extends JFrame {
 		}
 		setVisible(true);
 	}
-	
+
 	static class KeyDispatcher implements KeyEventDispatcher {
 		JPanel keyPanel;
 		KeyboardFocusManager kfm;
@@ -132,4 +197,5 @@ public class DrawingWindow extends JFrame {
 			return false;
 		}
 	}
+
 }
