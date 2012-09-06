@@ -69,7 +69,7 @@ public class MainPanel extends JPanel {
 		if (ip != null) {
 			userResponder.beginConnection(ip, port);
 		}
-		drawingData.setNewCursor();
+		//drawingPanel.setNewCursor();
 		menuBar.save.setEnabled(false);
 
 		validate();
@@ -246,10 +246,10 @@ public class MainPanel extends JPanel {
 			changeWidthHandler = new DocumentListener() {
 				public void changedUpdate(DocumentEvent e) {}
 				public void removeUpdate(DocumentEvent e) {
-					drawingData.setNewCursor();
+					//drawingPanel.setNewCursor();
 				}
 				public void insertUpdate(DocumentEvent e) {
-					drawingData.setNewCursor();
+					//drawingPanel.setNewCursor();
 				}
 			};
 		}
@@ -470,7 +470,7 @@ public class MainPanel extends JPanel {
 			if (!menuBar.colorPicker.isSelected()) {
 				menuBar.colorPicker.setSelected(true);
 			}
-			drawingData.setNewCursor();
+			//drawingPanel.setNewCursor();
 		}
 
 		public void eraseToggle() {
@@ -479,7 +479,7 @@ public class MainPanel extends JPanel {
 			if (!menuBar.eraser.isSelected()) {
 				menuBar.eraser.setSelected(true);
 			}
-			drawingData.setNewCursor();
+			//drawingPanel.setNewCursor();
 		}
 
 		public void brushToggle() {
@@ -488,14 +488,14 @@ public class MainPanel extends JPanel {
 			if (!menuBar.brush.isSelected()) {
 				menuBar.brush.setSelected(true);
 			}
-			drawingData.setNewCursor();
+			//drawingPanel.setNewCursor();
 		}
 
 		public void changeColor(Color c) {
 			drawingData.currentColor = c;
 			setBorder(BorderFactory.createLineBorder(c, 2));
 			consolePanel.setBorder(BorderFactory.createLineBorder(c, 2));
-			drawingData.setNewCursor();
+			//drawingPanel.setNewCursor();
 		}
 
 		public void addLayer() {
@@ -621,12 +621,7 @@ public class MainPanel extends JPanel {
 						DEFAULT_PORT); 
 				if (portInput != null) {
 					final int port = Integer.parseInt(portInput);
-					serverThread = new Thread() {
-						public void run() {
-							netController.startServer(port);
-						}
-					};
-					serverThread.start();
+					netController.startServer(port);
 					menuBar.server.setText("Stop Server");
 					menuBar.connect.setEnabled(false);
 					controlPanel.serverButton.setText("Stop Server");
@@ -777,11 +772,6 @@ public class MainPanel extends JPanel {
 			refigureLayerButtons();
 		}
 		public void refigureLayerButtons() {
-			/*if (drawingPanel.layers[getCurrentLayer()].visible) {
-        menuBar.layerVisible.setSelected(true);
-      } else {
-        menuBar.layerVisible.setSelected(false);
-      }*/
 			if (getCurrentLayer() >= getMaxLayer()) {
 				moveLayerForwardButton.setEnabled(false);
 				menuBar.moveLayerForward.setEnabled(false);
@@ -797,20 +787,7 @@ public class MainPanel extends JPanel {
 				menuBar.moveLayerBack.setEnabled(true);
 			}
 		}
-		/*public void moveLayerForward() {
-      int currentIndex = layerSelect.getSelectedIndex();
-      Object currentItem = layerSelect.getSelectedItem();
-      layerSelect.removeItem(currentItem);
-      layerSelect.insertItemAt(currentItem, currentIndex-1);
-      layerSelect.setSelectedIndex(currentIndex-1);
-    }
-    public void moveLayerBack() {
-      int currentIndex = layerSelect.getSelectedIndex();
-      Object currentItem = layerSelect.getSelectedItem();
-      layerSelect.removeItem(currentItem);
-      layerSelect.insertItemAt(currentItem, currentIndex+1);
-      layerSelect.setSelectedIndex(currentIndex+1);
-    }*/
+	
 		public ControlPanel() {
 
 			setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
@@ -1086,15 +1063,10 @@ public class MainPanel extends JPanel {
 				myID = Integer.parseInt(connection.inStream.readLine());
 				connection.myID = myID;
 				connection.otherID = myID;
-				consolePanel.tellUser("We are connection number: " + myID);
 				correctDimensions(connection);
-				consolePanel.tellUser("Dimensions corrected");
 				sendLayersToServer(connection);
-				consolePanel.tellUser("Layers sent");
 				correctLayerNames(connection);
-				consolePanel.tellUser("Layer names corrected");
 				connection.start();
-				consolePanel.tellUser("Connection thread started");
 			} catch (Exception e) {
 				consolePanel.tellUser("connectToServer");
 				consolePanel.tellUser("A connection error occurred.");
@@ -1121,6 +1093,9 @@ public class MainPanel extends JPanel {
 					listener = new ServerSocket(port);
 				} catch (Exception e) {
 					consolePanel.tellUser("Server problem 1 in method run: " + e);
+					serverRunning = false;
+					controlPanel.serverButton.setEnabled(true);
+					controlPanel.connectButton.setEnabled(true);
 				}
 				while(serverRunning) {
 					try {
@@ -1179,6 +1154,9 @@ public class MainPanel extends JPanel {
 						newConnection.start();
 					} catch (Exception e) {
 						consolePanel.tellUser("Server problem 2 in method run: " + e);
+						serverRunning = false;
+						controlPanel.serverButton.setEnabled(true);
+						controlPanel.connectButton.setEnabled(true);
 					}
 				}
 			}
@@ -1418,9 +1396,15 @@ public class MainPanel extends JPanel {
 			addMouseMotionListener(new MouseMotionAdapter() {
 				public void mouseDragged(MouseEvent evt) {
 					drawingData.handleMouseDragged(evt);
+					setNewCursor(evt.getX(), evt.getY());
+				}
+				public void mouseMoved(MouseEvent evt) {
+					setNewCursor(evt.getX(), evt.getY());
 				}
 			});
 		}
+		
+		
 		public void paintComponent(Graphics g) {
 			if (!drawingData.firstLayerAdded) {
 				drawingData.panelWidth = getWidth();
@@ -1451,6 +1435,109 @@ public class MainPanel extends JPanel {
 				if (layer.visible) g.drawImage(layer.i, 0, 0, this);
 			}
 		}
+		
+
+		public void myDrawCircle(int centerX, int centerY, int w, int x, int y, Graphics2D g2) {
+			g2.setColor(Color.ORANGE);
+			g2.drawOval(centerX, centerY, 100, 100);
+			g2.drawOval(x, y, 100, 100);
+
+			for (int xi = - w; xi <= w; xi++) {
+				int pointX = xi + centerX;
+				int pointY1 = centerY-(int)Math.sqrt(w*w-xi*xi);
+				int pointY2 = centerY+(int)Math.sqrt(w*w-xi*xi);
+				Color colorUnderneath1 = drawingData.getColorAt(x + pointX-w, y + pointY1-w);
+				Color colorUnderneath2 = drawingData.getColorAt(x + pointX-w, y + pointY2-w);				
+				if (colorUnderneath1.getRed() + colorUnderneath1.getGreen() + colorUnderneath1.getBlue() < 200) {
+					g2.setColor(Color.WHITE);
+				} else {
+					g2.setColor(Color.BLACK);
+				}
+				g2.drawRect(pointX, pointY1, 0, 0);
+				if (colorUnderneath2.getRed() + colorUnderneath2.getGreen() + colorUnderneath2.getBlue() < 200) {
+					g2.setColor(Color.WHITE);
+				} else {
+					g2.setColor(Color.BLACK);
+				}
+				g2.drawRect(pointX,pointY2, 0, 0);
+
+			}
+		}
+		
+		public void setNewCursor(int x, int y) {
+			if (!menuBar.colorPicker.isSelected()) {
+				int w = controlPanel.getLineWidth();
+				if (w>0) {
+					if (w>100) w=100;
+					int cw;
+					if (w<9) {
+						cw = 11;
+					} else {
+						cw = w+2;
+					}
+					BufferedImage i = new BufferedImage(cw, cw, BufferedImage.TYPE_INT_ARGB);
+					Graphics2D g2 = (Graphics2D)i.getGraphics();
+					g2.setColor(drawingData.currentColor);
+					if (w < 3 && !menuBar.eraser.isSelected()) {
+						g2.drawLine(cw/2-5, cw/2, cw/2+5, cw/2);
+						g2.drawLine(cw/2, cw/2-5, cw/2, cw/2+5);
+					} else {
+						if (menuBar.eraser.isSelected()) {
+							g2.drawRect(cw/2-w/2, cw/2-w/2, w, w);
+						} else {
+							myDrawCircle(cw/2, cw/2, w/2, x, y, g2);
+							//g2.drawOval(cw/2-w/2, cw/2-w/2, w, w);
+						}
+					}
+					g2.dispose();
+					Point hs = new Point(cw/2, cw/2);
+					Toolkit tk = Toolkit.getDefaultToolkit();
+					Cursor cursor = tk.createCustomCursor(i, hs, "cursor");
+					setCursor(cursor);
+				}
+			} else {
+				System.out.println("Default");
+				Cursor cursor = new Cursor(Cursor.DEFAULT_CURSOR);
+				setCursor(cursor);
+			}
+		}
+		
+		/*public void setNewCursor() {
+			if (!menuBar.colorPicker.isSelected()) {
+				int w = controlPanel.getLineWidth();
+				if (w>0) {
+					if (w>100) w=100;
+					int cw;
+					if (w<9) {
+						cw = 11;
+					} else {
+						cw = w+2;
+					}
+					BufferedImage i = new BufferedImage(cw, cw, BufferedImage.TYPE_INT_ARGB);
+					Graphics2D g2 = (Graphics2D)i.getGraphics();
+					g2.setColor(drawingData.currentColor);
+					if (w < 3 && !menuBar.eraser.isSelected()) {
+						g2.drawLine(cw/2-5, cw/2, cw/2+5, cw/2);
+						g2.drawLine(cw/2, cw/2-5, cw/2, cw/2+5);
+					} else {
+						if (menuBar.eraser.isSelected()) {
+							g2.drawRect(cw/2-w/2, cw/2-w/2, w, w);
+						} else {
+							myDrawCircle(cw/2, cw/2, w/2, 0, 0, g2);
+							//g2.drawOval(cw/2-w/2, cw/2-w/2, w, w);
+						}
+					}
+					g2.dispose();
+					Point hs = new Point(cw/2, cw/2);
+					Toolkit tk = Toolkit.getDefaultToolkit();
+					Cursor cursor = tk.createCustomCursor(i, hs, "cursor");
+					setCursor(cursor);
+				}
+			} else {
+				Cursor cursor = new Cursor(Cursor.DEFAULT_CURSOR);
+				setCursor(cursor);
+			}
+		}*/
 	}
 	
 	public class DrawingData extends JPanel {
@@ -1475,42 +1562,6 @@ public class MainPanel extends JPanel {
 		
 		public DrawingData() {
 			layers[0] = new Layer(1, 1, "Layer 0");
-		}
-
-		public void setNewCursor() {
-			if (!menuBar.colorPicker.isSelected()) {
-				int w = controlPanel.getLineWidth();
-				if (w>0) {
-					if (w>100) w=100;
-					int cw;
-					if (w<9) {
-						cw = 11;
-					} else {
-						cw = w+2;
-					}
-					BufferedImage i = new BufferedImage(cw, cw, BufferedImage.TYPE_INT_ARGB);
-					Graphics2D g2 = (Graphics2D)i.getGraphics();
-					g2.setColor(currentColor);
-					if (w < 3 && !menuBar.eraser.isSelected()) {
-						g2.drawLine(cw/2-5, cw/2, cw/2+5, cw/2);
-						g2.drawLine(cw/2, cw/2-5, cw/2, cw/2+5);
-					} else {
-						if (menuBar.eraser.isSelected()) {
-							g2.drawRect(cw/2-w/2, cw/2-w/2, w, w);
-						} else {
-							g2.drawOval(cw/2-w/2, cw/2-w/2, w, w);
-						}
-					}
-					g2.dispose();
-					Point hs = new Point(cw/2, cw/2);
-					Toolkit tk = Toolkit.getDefaultToolkit();
-					Cursor cursor = tk.createCustomCursor(i, hs, "cursor");
-					setCursor(cursor);
-				}
-			} else {
-				Cursor cursor = new Cursor(Cursor.DEFAULT_CURSOR);
-				setCursor(cursor);
-			}
 		}
 
 		public boolean layerExists(String name) {
