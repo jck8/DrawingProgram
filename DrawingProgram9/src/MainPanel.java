@@ -29,9 +29,9 @@ public class MainPanel extends JPanel {
 	Thread serverThread = null;
 	Menu menuBar = new Menu();
 	JPanel bgBox;
-	
+
 	public MainPanel(DrawingWindow pw, File file, Dimension d, String ip, int port) {
-		        
+
 		parentWindow = pw;
 		setLayout(new BorderLayout());
 		drawingData = new DrawingData();
@@ -49,13 +49,16 @@ public class MainPanel extends JPanel {
 			drawingPanel.setMinimumSize(drawingSize);
 		}
 		System.out.println("DrawingSize = " + drawingSize);
+		
+		//Set up a gray-colored background for when the drawing area is smaller than the window...
 		bgBox = new JPanel();
 		bgBox.setLayout(new BoxLayout(bgBox, BoxLayout.Y_AXIS));
 		bgBox.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-        bgBox.add(Box.createVerticalGlue());
-        bgBox.add(drawingPanel);
-        bgBox.add(Box.createVerticalGlue());
+		bgBox.add(Box.createVerticalGlue());
+		bgBox.add(drawingPanel);
+		bgBox.add(Box.createVerticalGlue());
 		bgBox.setBackground(Color.lightGray);
+		
 		scroller = new JScrollPane(bgBox);
 		controlPanel = new ControlPanel();
 		consolePanel = new ConsolePanel();
@@ -69,13 +72,12 @@ public class MainPanel extends JPanel {
 		if (ip != null) {
 			userResponder.beginConnection(ip, port);
 		}
-		//drawingPanel.setNewCursor();
+		drawingPanel.setNewCursor();
 		menuBar.save.setEnabled(false);
-
 		validate();
 
 	}
-	
+
 	public void resizeDrawingPanel(Dimension d) {
 		scroller.remove(drawingPanel);
 		remove(scroller);
@@ -85,9 +87,9 @@ public class MainPanel extends JPanel {
 		bgBox.setLayout(new BoxLayout(bgBox, BoxLayout.Y_AXIS));
 		bgBox.setBackground(Color.lightGray);
 		bgBox.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-        bgBox.add(Box.createVerticalGlue());
-        bgBox.add(drawingPanel);
-        bgBox.add(Box.createVerticalGlue());
+		bgBox.add(Box.createVerticalGlue());
+		bgBox.add(drawingPanel);
+		bgBox.add(Box.createVerticalGlue());
 		scroller = new JScrollPane(bgBox);
 		add(scroller);
 		validate();
@@ -142,7 +144,7 @@ public class MainPanel extends JPanel {
 		DocumentListener changeWidthHandler;
 		boolean connectedToServer = false;
 		boolean serverRunning = false;
-		
+
 		public UserResponder () {
 			newHandler = new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
@@ -246,10 +248,10 @@ public class MainPanel extends JPanel {
 			changeWidthHandler = new DocumentListener() {
 				public void changedUpdate(DocumentEvent e) {}
 				public void removeUpdate(DocumentEvent e) {
-					//drawingPanel.setNewCursor();
+					drawingPanel.setNewCursor();
 				}
 				public void insertUpdate(DocumentEvent e) {
-					//drawingPanel.setNewCursor();
+					drawingPanel.setNewCursor();
 				}
 			};
 		}
@@ -263,7 +265,7 @@ public class MainPanel extends JPanel {
 			}
 			return name;
 		}
-		
+
 		public void insertImage(BufferedImage img, String name) {
 			int rgb;
 			int w;
@@ -291,7 +293,7 @@ public class MainPanel extends JPanel {
 			System.out.println("Layers refigured for " + name);
 			drawingPanel.repaint();
 		}
-		
+
 		public void openFile (File file) {
 			String currentLayerName = "";
 			String chunk;
@@ -371,7 +373,7 @@ public class MainPanel extends JPanel {
 				return s;
 			} else return (s);
 		}
-		
+
 		public void save() {
 			if (currentFile != null) {
 				writeDrawingToFile(currentFile);
@@ -380,10 +382,10 @@ public class MainPanel extends JPanel {
 				saveAs();
 			}
 		}
-		
+
 		public void saveAs() {
 			JFileChooser fc = new JFileChooser();
-			if (fc.showSaveDialog(controlPanel)==JFileChooser.APPROVE_OPTION) {
+			if (fc.showSaveDialog(null)==JFileChooser.APPROVE_OPTION) {
 				File file = fc.getSelectedFile();
 				if (file.exists()) {
 					if (JOptionPane.showConfirmDialog(null, "Overwrite existing file?", "Overwrite?", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
@@ -399,7 +401,7 @@ public class MainPanel extends JPanel {
 				}
 			}
 		}
-		
+
 		public void writeDrawingToFile(File file) {
 			FileWriter fw;
 			PrintWriter pw;
@@ -435,10 +437,10 @@ public class MainPanel extends JPanel {
 				consolePanel.tellUser("Error writing file: " + e);
 			}
 		}
-		
+
 		public void export() {
 			JFileChooser fc = new JFileChooser();
-			if (fc.showSaveDialog(controlPanel)==JFileChooser.APPROVE_OPTION) {
+			if (fc.showSaveDialog(null)==JFileChooser.APPROVE_OPTION) {
 				File file = fc.getSelectedFile();
 				if (file.exists()) {
 					if (JOptionPane.showConfirmDialog(null, "Overwrite existing file?", "Overwrite?", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
@@ -463,14 +465,14 @@ public class MainPanel extends JPanel {
 				}
 			}
 		}
-		
+
 		public void colorPickerToggle() {
 			menuBar.brush.setSelected(false);
 			menuBar.eraser.setSelected(false);
 			if (!menuBar.colorPicker.isSelected()) {
 				menuBar.colorPicker.setSelected(true);
 			}
-			//drawingPanel.setNewCursor();
+			drawingPanel.setNewCursor();
 		}
 
 		public void eraseToggle() {
@@ -479,7 +481,7 @@ public class MainPanel extends JPanel {
 			if (!menuBar.eraser.isSelected()) {
 				menuBar.eraser.setSelected(true);
 			}
-			//drawingPanel.setNewCursor();
+			drawingPanel.setNewCursor();
 		}
 
 		public void brushToggle() {
@@ -488,14 +490,14 @@ public class MainPanel extends JPanel {
 			if (!menuBar.brush.isSelected()) {
 				menuBar.brush.setSelected(true);
 			}
-			//drawingPanel.setNewCursor();
+			drawingPanel.setNewCursor();
 		}
 
 		public void changeColor(Color c) {
 			drawingData.currentColor = c;
 			setBorder(BorderFactory.createLineBorder(c, 2));
 			consolePanel.setBorder(BorderFactory.createLineBorder(c, 2));
-			//drawingPanel.setNewCursor();
+			drawingPanel.setNewCursor();
 		}
 
 		public void addLayer() {
@@ -580,7 +582,7 @@ public class MainPanel extends JPanel {
 				beginConnection(ip, port);
 			}
 		}
-		
+
 		public void beginConnection(final String ip, final int port) {
 
 			connectionThread = new Thread() {
@@ -638,7 +640,6 @@ public class MainPanel extends JPanel {
 			}
 		}
 	} 
-
 
 	public class Menu extends JMenuBar {
 
@@ -735,7 +736,7 @@ public class MainPanel extends JPanel {
 		JButton moveLayerBackButton = new JButton("Move layer back");
 		JButton layerAddButton = new JButton("Add Layer");
 		JButton moveLayerForwardButton = new JButton("Move layer forward");
-		
+
 		public int getCurrentLayer() {
 			return (layerSelect.getItemCount()-1)-layerSelect.getSelectedIndex();
 		}
@@ -787,7 +788,7 @@ public class MainPanel extends JPanel {
 				menuBar.moveLayerBack.setEnabled(true);
 			}
 		}
-	
+
 		public ControlPanel() {
 
 			setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
@@ -818,7 +819,7 @@ public class MainPanel extends JPanel {
 			add(serverButton);
 			add(connectButton);
 			requestFocusInWindow();
-			
+
 		}
 
 		public int getLineWidth() {
@@ -869,7 +870,7 @@ public class MainPanel extends JPanel {
 				}
 			}
 		}
-		
+
 		public void handleRemoteDisconnect(Connection c) {
 			try {
 				c.connectionSocket.close();
@@ -926,7 +927,7 @@ public class MainPanel extends JPanel {
 			}
 			return img;
 		}
-		
+
 		public String getImageStringFromReader(BufferedReader br) {
 			StringBuffer imageString = new StringBuffer("");
 			String in;
@@ -937,11 +938,11 @@ public class MainPanel extends JPanel {
 			System.out.println("Returning an image from a reader");
 			return imageString.toString();
 		}
-		
+
 		public BufferedImage getImageFromReader(BufferedReader br) {
 			return string2Image(getImageStringFromReader(br));
 		}
-		
+
 		public String getChunk(BufferedReader br, char delim) {
 			int i = -1;
 			try {
@@ -974,7 +975,7 @@ public class MainPanel extends JPanel {
 				return s;
 			} else return (s);
 		}
-		
+
 		public void correctDimensions(Connection connection) {
 			int myWidth = drawingData.panelWidth;
 			int myHeight = drawingData.panelHeight;
@@ -991,7 +992,7 @@ public class MainPanel extends JPanel {
 				consolePanel.tellUser("A connection error occurred.");
 				consolePanel.tellUser("Error: " + e);
 			}
- 			int newWidth = myWidth;
+			int newWidth = myWidth;
 			int newHeight = myHeight;
 			if (otherWidth > myWidth) {
 				newWidth = otherWidth;
@@ -1013,7 +1014,7 @@ public class MainPanel extends JPanel {
 
 			}
 		}
-		
+
 		public void sendLayersToServer(Connection connection) {
 			for (Layer l: drawingData.layers) {
 				consolePanel.tellUser("Sending layer to server: " + l.name);
@@ -1022,7 +1023,7 @@ public class MainPanel extends JPanel {
 			connection.outStream.println("DONE");
 			connection.outStream.flush();
 		}
-		
+
 		public void correctLayerNames(Connection connection) {
 			String in = "";
 			try {
@@ -1052,7 +1053,7 @@ public class MainPanel extends JPanel {
 				}
 			}
 		}
-		
+
 		public void connectToServer(String ip, int port) {
 			try {
 				Socket socket = new Socket(ip, port);
@@ -1193,7 +1194,7 @@ public class MainPanel extends JPanel {
 					handleRemoteAction();
 				}
 			}
-			
+
 			public void swapLayers(int ident, int l1, int l2) {
 				if (ident == -1) {
 					ident = myID;
@@ -1201,7 +1202,7 @@ public class MainPanel extends JPanel {
 				outStream.println("SL"+";"+ident+";"+l1+";"+l2);
 				outStream.flush();
 			}
-			
+
 			public void sendNewCurve(int ident, int startX, int startY, int lineWidth, Color color, boolean erase, int layer) {
 				if (ident == -1) {
 					ident = myID;
@@ -1233,7 +1234,7 @@ public class MainPanel extends JPanel {
 				outStream.println("RL"+";"+ident+";"+oldName+";"+newName);
 				outStream.flush();
 			}
-			
+
 			public void addLayer(int ident, int width, int height, String name) {
 				if (ident == -1) {
 					ident = myID;
@@ -1241,7 +1242,7 @@ public class MainPanel extends JPanel {
 				outStream.println("L"+";"+ident+";"+width+";"+height+";"+name);
 				outStream.flush();
 			}
-			
+
 			public void addLayerWithImage(int ident, String name, BufferedImage img) {
 				if (ident == -1) {
 					ident = myID;
@@ -1259,7 +1260,7 @@ public class MainPanel extends JPanel {
 				outStream.println("ENDIMAGE");
 				outStream.flush();
 			}
-			
+
 			public void handleRemoteAction() {
 				int x;
 				int y;
@@ -1274,8 +1275,9 @@ public class MainPanel extends JPanel {
 					System.out.println("Connection possibly interrupted: " + e);
 					in = "";
 				}
-				processedIn = in.split(";");
+				processedIn = in.split(";"); 
 				if (processedIn[0].equals("NEW")) {
+					/*The start of a new line */
 					consolePanel.tellUser("Received 'NEW'");
 					receivedID = Integer.parseInt(processedIn[1]);
 					remoteLineWidth = Integer.parseInt(processedIn[2]);
@@ -1296,6 +1298,7 @@ public class MainPanel extends JPanel {
 					}
 				}
 				else if (processedIn[0].equals("PT")) {
+					/*A new point is being added to the connector's current line*/
 					receivedID = Integer.parseInt(processedIn[1]);
 					x = Integer.parseInt(processedIn[2]);
 					y = Integer.parseInt(processedIn[3]);
@@ -1305,6 +1308,7 @@ public class MainPanel extends JPanel {
 					}
 				}
 				else if (processedIn[0].equals("L")) {
+					/*Connector added a new blank layer*/
 					receivedID = Integer.parseInt(processedIn[1]);
 					int width = Integer.parseInt(processedIn[2]);
 					int height = Integer.parseInt(processedIn[3]);
@@ -1315,6 +1319,7 @@ public class MainPanel extends JPanel {
 					controlPanel.refigureLayers();
 				}
 				else if (processedIn[0].equals("RL")) {
+					/*Connector wanted to rename layer*/
 					receivedID = Integer.parseInt(processedIn[1]);
 					String oldName = processedIn[2];
 					String newName = processedIn[3];
@@ -1326,6 +1331,7 @@ public class MainPanel extends JPanel {
 					controlPanel.refigureLayers();
 				}
 				else if (processedIn[0].equals("LI")) {
+					/*Connector is sending a layer, along with image data to put in the layer*/
 					receivedID = Integer.parseInt(processedIn[1]);
 					int width = Integer.parseInt(processedIn[2]);
 					int height = Integer.parseInt(processedIn[3]);
@@ -1341,6 +1347,7 @@ public class MainPanel extends JPanel {
 					drawingPanel.repaint();
 				}
 				else if (processedIn[0].equals("SL")) {
+					/*Connector is swapping layers*/
 					receivedID = Integer.parseInt(processedIn[1]);
 					int l1 = Integer.parseInt(processedIn[2]);
 					int l2 = Integer.parseInt(processedIn[3]);
@@ -1372,17 +1379,220 @@ public class MainPanel extends JPanel {
 		}
 	}
 
-	public class DrawingPanel extends JPanel {
-	    public Dimension getMinimumSize() {
-	        return getPreferredSize();
-	    }
+	public class DPCursor {
+		/* Describes the cursor we'll use for the DrawingPanel. 
+		 * Contains a method to convert itself to a Java "Cursor"
+		 * object.
+		 */
+		
+		DrawingPanel dp;
 
-	    public Dimension getMaximumSize() {
-	        return getPreferredSize();
-	    }
+		public static final int DEFAULTSHAPE = 0;
+		public static final int CROSSHAIR = 1;
+		public static final int CIRCLE = 2;
+		public static final int SQUARE = 3;
+		
+		final int COLORCHANGETHRESHOLD = 400; 
+		/*How bright/dim the area under the cursor has to be to justify changing 
+		 * the cursor's color to make it more visible. The value of 400 was chosen to
+		 * ensure that, e.g., the cursor becomes white when most of the underlying area
+		 * is black. */
+		
+		final int CURSORIMAGEPADDING = 2;
+		/*When we draw a circle-shaped cursor, the image needs to be a bit wider than the diameter of the
+		 * circle in order to contain the whole circle
+		 */
+		
+		Color color;
+		int shape;
+		int width;
+		
+		public DPCursor(DrawingPanel dp, Color c, int s, int w) {
+			this.dp = dp;
+			shape = s;
+			color = c;
+			width = w;
+		}
+
+		/*public Color chooseColor (int x, int y) {
+			if (dp.averagePixelBrightness(cw/2, cw/2, w/2, x, y) > 400) {
+				g2.setColor(Color.BLACK);
+			} else {
+				g2.setColor(Color.WHITE);
+			}
+		}*/
+		
+		public Boolean equals(DPCursor c) {
+			if (this.width == c.width && this.shape == c.shape && this.color.equals(c.color)) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
+		public Cursor convertToCursor() {
+			Cursor cursor;
+			int w = width;
+			if (shape == DEFAULTSHAPE) {
+				cursor = new Cursor(Cursor.DEFAULT_CURSOR);
+			} else {
+				BufferedImage img; //The buffered image we'll draw the new cursor image into, in order to pass to createCustomCursor
+				int cursorImageWidth; //The width and height of that buffered image. Now just set it wide enough...
+				
+				if (shape == CROSSHAIR) { 
+					cursorImageWidth = 11; 
+				} else {
+					cursorImageWidth = w+CURSORIMAGEPADDING; 
+				}
+				
+				img = new BufferedImage(cursorImageWidth, cursorImageWidth, BufferedImage.TYPE_INT_ARGB);
+				Graphics g = img.getGraphics();
+				g.setColor(color);
+				if (shape == CROSSHAIR) {
+					g.drawLine(cursorImageWidth/2-5, cursorImageWidth/2, cursorImageWidth/2+5, cursorImageWidth/2);
+					g.drawLine(cursorImageWidth/2, cursorImageWidth/2-5, cursorImageWidth/2, cursorImageWidth/2+5);
+				}
+				if (shape == CIRCLE) {
+					g.drawOval(cursorImageWidth/2-w/2, cursorImageWidth/2-w/2, w, w);
+				}
+				if (shape == SQUARE) {
+					g.drawRect(cursorImageWidth/2-w/2, cursorImageWidth/2-w/2, w, w);
+				}
+				g.dispose();
+				Point hotspot = new Point(cursorImageWidth/2, cursorImageWidth/2);
+				Toolkit tk = Toolkit.getDefaultToolkit();
+				cursor = tk.createCustomCursor(img, hotspot, "cursor");
+			}
+			return cursor;
+		}
+		
+		private int clipCursorSize(int preferredSize) {
+			/*The system we're on might not allow cursors that are preferredSize x preferredSize.
+			 * Return the closest width we can actually use, assuming a square-shaped cursor.
+			 */
+			Toolkit tk = Toolkit.getDefaultToolkit();
+			Dimension closestAllowedDimension = 
+					tk.getBestCursorSize(preferredSize + CURSORIMAGEPADDING, preferredSize + CURSORIMAGEPADDING);
+			int closestW = closestAllowedDimension.width - CURSORIMAGEPADDING;
+			int closestH = closestAllowedDimension.height - CURSORIMAGEPADDING;
+			if (closestW != preferredSize) {
+				System.out.println("W: " + closestW);
+				System.out.println("H: " + closestH);
+			}
+			return Math.min(closestW, closestH);
+		}
+		
+		public DPCursor getNew(int x, int y) {
+			/* When passed the current mouse coordinates, returns a cursor that should be appropriate to the mouse's
+			 * current location: white if it's on a dark background, black if on a light background. */
+			int newWidth;
+			int newShape;
+			Color newColor;
+			newWidth = clipCursorSize(controlPanel.getLineWidth());
+			
+			/*Check to see if we can actually make a cursor of that width. If not, use the biggest
+			 * size we can, assuming a square-shaped cursor.
+			Dimension closestAllowedDimension = 
+					tk.getBestCursorSize(newWidth + CURSORIMAGEPADDING, newWidth + CURSORIMAGEPADDING);
+			int closestW = closestAllowedDimension.width - CURSORIMAGEPADDING;
+			int closestH = closestAllowedDimension.height - CURSORIMAGEPADDING;
+			if (closestW != newWidth) {
+				System.out.println("W: " + closestW);
+				System.out.println("H: " + closestH);
+			}
+			newWidth = Math.min(closestW, closestH);*/
+			
+			if (dp.averagePixelBrightness(getPointsCircle(x, y, newWidth)) > COLORCHANGETHRESHOLD) { 
+				newColor = Color.BLACK;
+			} else {
+				newColor = Color.WHITE;
+			}
+			if (menuBar.colorPicker.isSelected()) {
+				newShape = DEFAULTSHAPE;
+			} else if (menuBar.eraser.isSelected()) {
+				newShape = SQUARE;
+			} else {
+				if (newWidth < 3) {
+					newShape = CROSSHAIR;
+				} else {
+					newShape = CIRCLE;
+				}
+			}
+			return (new DPCursor(dp, newColor, newShape, newWidth));
+		}
+		
+		/*public Cursor getNewCursor(int x, int y) {
+			Cursor cursor;
+			if (!menuBar.colorPicker.isSelected()) {
+				int w = controlPanel.getLineWidth(); //The current width of the "pen"
+				if (w>100) w=100;
+				int cw; //The width and height of the buffered image we'll draw the new cursor in
+				if (w<9) { //If the pen is less than 9 pixels wide, we'll use a crosshair cursor
+					cw = 11; //So make room for that
+				} else {
+					cw = w+2; //Otherwise, set the width to just a bit more than our pen width 
+				}
+				BufferedImage i = new BufferedImage(cw, cw, BufferedImage.TYPE_INT_ARGB);
+				Graphics2D g2 = (Graphics2D)i.getGraphics();
+				
+				if (dp.averagePixelBrightness(getPointsCircle(x, y, w)) > 400) { 
+					color = Color.BLACK;
+				} else {
+					color = Color.WHITE;
+				}
+				g2.setColor(color);
+				if (w < 3 && !menuBar.eraser.isSelected()) {
+					g2.drawLine(cw/2-5, cw/2, cw/2+5, cw/2);
+					g2.drawLine(cw/2, cw/2-5, cw/2, cw/2+5);
+				} else {
+					if (menuBar.eraser.isSelected()) {
+						g2.drawRect(cw/2-w/2, cw/2-w/2, w, w);
+					} else {
+						g2.drawOval(cw/2-w/2, cw/2-w/2, w, w);
+					}
+				}
+				g2.dispose();
+				Point hs = new Point(cw/2, cw/2);
+				Toolkit tk = Toolkit.getDefaultToolkit();
+				cursor = tk.createCustomCursor(i, hs, "cursor");
+			} else {
+				cursor = new Cursor(Cursor.DEFAULT_CURSOR);
+			}
+			return cursor;
+		}*/
+
+		public LinkedList<Coord> getPointsCircle(int x, int y, int w) {
+			int r = w/2; //Make the radius of the "circle" we're testing equal to the width/2
+			int pointX; //The x coordinate of the pixel currently being counted
+			int pointY; //The y coordinate of the pixel currently being counted
+			
+			LinkedList<Coord> points = new LinkedList<Coord>();
+			for (int xi = - r; xi <= r; xi++) {
+				pointX = xi + x;
+				pointY = y - (int)Math.sqrt(r*r - xi*xi);
+				points.add(new Coord(pointX, pointY));
+				pointY = y + (int)Math.sqrt(r*r - xi*xi);
+				points.add(new Coord(pointX, pointY));
+			}
+			return points;
+		}
+	}
+
+	public class DrawingPanel extends JPanel {
+
+		DPCursor dpCursor = new DPCursor(this, Color.black, DPCursor.DEFAULTSHAPE, 1);
+		
+		public Dimension getMinimumSize() {
+			return getPreferredSize();
+		}
+
+		public Dimension getMaximumSize() {
+			return getPreferredSize();
+		}
 
 		public DrawingPanel() {
 			setBackground(Color.WHITE);
+
 
 			addMouseListener(new MouseAdapter() {
 				public void mousePressed(MouseEvent evt) {
@@ -1394,17 +1604,36 @@ public class MainPanel extends JPanel {
 				}
 			});
 			addMouseMotionListener(new MouseMotionAdapter() {
+				private int timesMouseMoved = 0;
 				public void mouseDragged(MouseEvent evt) {
 					drawingData.handleMouseDragged(evt);
-					setNewCursor(evt.getX(), evt.getY());
+					if (timesMouseMoved < 15) {
+						timesMouseMoved++;
+					} else {
+						timesMouseMoved = 0;
+						DPCursor newCursor = dpCursor.getNew(evt.getX(), evt.getY());
+						if (!newCursor.equals(dpCursor)) {
+							dpCursor = newCursor;
+							setCursor(dpCursor.convertToCursor());
+						}
+					}
 				}
 				public void mouseMoved(MouseEvent evt) {
-					setNewCursor(evt.getX(), evt.getY());
+					if (timesMouseMoved < 15) {
+						timesMouseMoved++;
+					} else {
+						timesMouseMoved = 0;
+						DPCursor newCursor = dpCursor.getNew(evt.getX(), evt.getY());
+						if (!newCursor.equals(dpCursor)) {
+							dpCursor = newCursor;
+							setCursor(dpCursor.convertToCursor());
+						}
+					}
 				}
 			});
 		}
-		
-		
+
+
 		public void paintComponent(Graphics g) {
 			if (!drawingData.firstLayerAdded) {
 				drawingData.panelWidth = getWidth();
@@ -1435,12 +1664,26 @@ public class MainPanel extends JPanel {
 				if (layer.visible) g.drawImage(layer.i, 0, 0, this);
 			}
 		}
-		
 
+		
+		public int averagePixelBrightness(LinkedList<Coord> pixels) {
+			/* takes a bunch of Coords and gives the average "brightness" of the pixels within the DrawingPanel
+			 * that they represent. "Brightness" means the sum of the R, G, and B */
+			int totalPixelBrightness = 0;
+			Color pixelColor; //The color of the pixel currently being counted
+			int n = 0;
+			for (Coord c: pixels) {
+				try {
+					pixelColor = drawingData.getColorAt(c.x, c.y);
+					totalPixelBrightness += pixelColor.getRed() + pixelColor.getGreen() + pixelColor.getBlue();
+					n++;
+				} catch (Exception e) {}
+			}
+			if (n == 0) return 0;
+			else return totalPixelBrightness / n;
+		}
+		
 		public void myDrawCircle(int centerX, int centerY, int w, int x, int y, Graphics2D g2) {
-			g2.setColor(Color.ORANGE);
-			g2.drawOval(centerX, centerY, 100, 100);
-			g2.drawOval(x, y, 100, 100);
 
 			for (int xi = - w; xi <= w; xi++) {
 				int pointX = xi + centerX;
@@ -1463,45 +1706,19 @@ public class MainPanel extends JPanel {
 
 			}
 		}
-		
-		public void setNewCursor(int x, int y) {
-			if (!menuBar.colorPicker.isSelected()) {
-				int w = controlPanel.getLineWidth();
-				if (w>0) {
-					if (w>100) w=100;
-					int cw;
-					if (w<9) {
-						cw = 11;
-					} else {
-						cw = w+2;
-					}
-					BufferedImage i = new BufferedImage(cw, cw, BufferedImage.TYPE_INT_ARGB);
-					Graphics2D g2 = (Graphics2D)i.getGraphics();
-					g2.setColor(drawingData.currentColor);
-					if (w < 3 && !menuBar.eraser.isSelected()) {
-						g2.drawLine(cw/2-5, cw/2, cw/2+5, cw/2);
-						g2.drawLine(cw/2, cw/2-5, cw/2, cw/2+5);
-					} else {
-						if (menuBar.eraser.isSelected()) {
-							g2.drawRect(cw/2-w/2, cw/2-w/2, w, w);
-						} else {
-							myDrawCircle(cw/2, cw/2, w/2, x, y, g2);
-							//g2.drawOval(cw/2-w/2, cw/2-w/2, w, w);
-						}
-					}
-					g2.dispose();
-					Point hs = new Point(cw/2, cw/2);
-					Toolkit tk = Toolkit.getDefaultToolkit();
-					Cursor cursor = tk.createCustomCursor(i, hs, "cursor");
-					setCursor(cursor);
-				}
-			} else {
-				System.out.println("Default");
-				Cursor cursor = new Cursor(Cursor.DEFAULT_CURSOR);
-				setCursor(cursor);
-			}
+
+		public void setNewCursor() {
+			DPCursor newDPCursor = dpCursor.getNew(0, 0);
+			newDPCursor.color = Color.black;
+			//dpCursor = newDPCursor;
+			setCursor(newDPCursor.convertToCursor());
 		}
 		
+		/*public void setNewCursor(int x, int y) {
+			Cursor cursor = dpCursor.getNewCursor(x,  y);
+			setCursor(cursor);
+		}*/
+
 		/*public void setNewCursor() {
 			if (!menuBar.colorPicker.isSelected()) {
 				int w = controlPanel.getLineWidth();
@@ -1539,7 +1756,7 @@ public class MainPanel extends JPanel {
 			}
 		}*/
 	}
-	
+
 	public class DrawingData extends JPanel {
 		MainPanel container = null;
 		public int panelWidth;
@@ -1559,7 +1776,7 @@ public class MainPanel extends JPanel {
 		//BufferedImage displayedImage = new BufferedImage(panelWidth, panelHeight, BufferedImage.TYPE_INT_RGB);
 		Layer[] layers = new Layer[1];
 		int nextLayerID = 0;
-		
+
 		public DrawingData() {
 			layers[0] = new Layer(1, 1, "Layer 0");
 		}
@@ -1579,7 +1796,7 @@ public class MainPanel extends JPanel {
 			layers[b] = layers[a];
 			layers[a] = temp;
 		}
-		
+
 		public Layer insertLayer(int w, int h, String n, int insertionPoint) {
 			menuBar.save.setEnabled(true);
 			Layer[] newLayers = new Layer[layers.length+1];
