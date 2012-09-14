@@ -49,7 +49,7 @@ public class MainPanel extends JPanel {
 			drawingPanel.setMinimumSize(drawingSize);
 		}
 		System.out.println("DrawingSize = " + drawingSize);
-		
+
 		//Set up a gray-colored background for when the drawing area is smaller than the window...
 		bgBox = new JPanel();
 		bgBox.setLayout(new BoxLayout(bgBox, BoxLayout.Y_AXIS));
@@ -58,7 +58,7 @@ public class MainPanel extends JPanel {
 		bgBox.add(drawingPanel);
 		bgBox.add(Box.createVerticalGlue());
 		bgBox.setBackground(Color.lightGray);
-		
+
 		scroller = new JScrollPane(bgBox);
 		controlPanel = new ControlPanel();
 		consolePanel = new ConsolePanel();
@@ -334,6 +334,8 @@ public class MainPanel extends JPanel {
 				System.out.println("About to insert Image");
 				insertImage(img, currentLayerName);
 				System.out.println("Inserted image");
+				drawingData.panelWidth = img.getWidth();
+				drawingData.panelHeight = img.getHeight();
 				drawingPanel.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
 				controlPanel.setCurrentLayer(currentLayerName);
 			} catch (Exception e) {
@@ -1384,29 +1386,33 @@ public class MainPanel extends JPanel {
 		 * Contains a method to convert itself to a Java "Cursor"
 		 * object.
 		 */
-		
+
 		DrawingPanel dp;
 
 		public static final int DEFAULTSHAPE = 0;
 		public static final int CROSSHAIR = 1;
 		public static final int CIRCLE = 2;
 		public static final int SQUARE = 3;
-		
+
 		final int COLORCHANGETHRESHOLD = 400; 
 		/*How bright/dim the area under the cursor has to be to justify changing 
 		 * the cursor's color to make it more visible. The value of 400 was chosen to
 		 * ensure that, e.g., the cursor becomes white when most of the underlying area
 		 * is black. */
-		
+
 		final int CURSORIMAGEPADDING = 2;
 		/*When we draw a circle-shaped cursor, the image needs to be a bit wider than the diameter of the
 		 * circle in order to contain the whole circle
 		 */
-		
+
+		final int CROSSHAIRTHRESHOLD = 3;
+		/*When the cursor is small, we want to change it to a crosshair, rather than a circle the width
+		 * of the brush size. This gives the cursor width (in pixels) at which we make the change.*/  
+
 		Color color;
 		int shape;
 		int width;
-		
+
 		public DPCursor(DrawingPanel dp, Color c, int s, int w) {
 			this.dp = dp;
 			shape = s;
@@ -1421,7 +1427,7 @@ public class MainPanel extends JPanel {
 				g2.setColor(Color.WHITE);
 			}
 		}*/
-		
+
 		public Boolean equals(DPCursor c) {
 			if (this.width == c.width && this.shape == c.shape && this.color.equals(c.color)) {
 				return true;
@@ -1429,7 +1435,7 @@ public class MainPanel extends JPanel {
 				return false;
 			}
 		}
-		
+
 		public Cursor convertToCursor() {
 			Cursor cursor;
 			int w = width;
@@ -1438,13 +1444,13 @@ public class MainPanel extends JPanel {
 			} else {
 				BufferedImage img; //The buffered image we'll draw the new cursor image into, in order to pass to createCustomCursor
 				int cursorImageWidth; //The width and height of that buffered image. Now just set it wide enough...
-				
+
 				if (shape == CROSSHAIR) { 
 					cursorImageWidth = 11; 
 				} else {
 					cursorImageWidth = w+CURSORIMAGEPADDING; 
 				}
-				
+
 				img = new BufferedImage(cursorImageWidth, cursorImageWidth, BufferedImage.TYPE_INT_ARGB);
 				Graphics g = img.getGraphics();
 				g.setColor(color);
@@ -1465,7 +1471,7 @@ public class MainPanel extends JPanel {
 			}
 			return cursor;
 		}
-		
+
 		private int clipCursorSize(int preferredSize) {
 			/*The system we're on might not allow cursors that are preferredSize x preferredSize.
 			 * Return the closest width we can actually use, assuming a square-shaped cursor.
@@ -1481,7 +1487,17 @@ public class MainPanel extends JPanel {
 			}
 			return Math.min(closestW, closestH);
 		}
-		
+
+		public void makeCursorVisibleOn(Color c) {
+			if (dp.getBrightness(c) > COLORCHANGETHRESHOLD) {
+				System.out.println("changing to black");
+				color = Color.black;
+			} else {
+				System.out.println("changing to white");
+				color = Color.white;
+			}
+		}
+
 		public DPCursor getNew(int x, int y) {
 			/* When passed the current mouse coordinates, returns a cursor that should be appropriate to the mouse's
 			 * current location: white if it's on a dark background, black if on a light background. */
@@ -1489,19 +1505,9 @@ public class MainPanel extends JPanel {
 			int newShape;
 			Color newColor;
 			newWidth = clipCursorSize(controlPanel.getLineWidth());
-			
-			/*Check to see if we can actually make a cursor of that width. If not, use the biggest
-			 * size we can, assuming a square-shaped cursor.
-			Dimension closestAllowedDimension = 
-					tk.getBestCursorSize(newWidth + CURSORIMAGEPADDING, newWidth + CURSORIMAGEPADDING);
-			int closestW = closestAllowedDimension.width - CURSORIMAGEPADDING;
-			int closestH = closestAllowedDimension.height - CURSORIMAGEPADDING;
-			if (closestW != newWidth) {
-				System.out.println("W: " + closestW);
-				System.out.println("H: " + closestH);
-			}
-			newWidth = Math.min(closestW, closestH);*/
-			
+
+			System.out.println(dp.fractionOfPixelsBrighterThan(getPointsCircle(x, y, newWidth), 0.5));
+
 			if (dp.averagePixelBrightness(getPointsCircle(x, y, newWidth)) > COLORCHANGETHRESHOLD) { 
 				newColor = Color.BLACK;
 			} else {
@@ -1512,7 +1518,7 @@ public class MainPanel extends JPanel {
 			} else if (menuBar.eraser.isSelected()) {
 				newShape = SQUARE;
 			} else {
-				if (newWidth < 3) {
+				if (newWidth < CROSSHAIRTHRESHOLD) {
 					newShape = CROSSHAIR;
 				} else {
 					newShape = CIRCLE;
@@ -1520,52 +1526,12 @@ public class MainPanel extends JPanel {
 			}
 			return (new DPCursor(dp, newColor, newShape, newWidth));
 		}
-		
-		/*public Cursor getNewCursor(int x, int y) {
-			Cursor cursor;
-			if (!menuBar.colorPicker.isSelected()) {
-				int w = controlPanel.getLineWidth(); //The current width of the "pen"
-				if (w>100) w=100;
-				int cw; //The width and height of the buffered image we'll draw the new cursor in
-				if (w<9) { //If the pen is less than 9 pixels wide, we'll use a crosshair cursor
-					cw = 11; //So make room for that
-				} else {
-					cw = w+2; //Otherwise, set the width to just a bit more than our pen width 
-				}
-				BufferedImage i = new BufferedImage(cw, cw, BufferedImage.TYPE_INT_ARGB);
-				Graphics2D g2 = (Graphics2D)i.getGraphics();
-				
-				if (dp.averagePixelBrightness(getPointsCircle(x, y, w)) > 400) { 
-					color = Color.BLACK;
-				} else {
-					color = Color.WHITE;
-				}
-				g2.setColor(color);
-				if (w < 3 && !menuBar.eraser.isSelected()) {
-					g2.drawLine(cw/2-5, cw/2, cw/2+5, cw/2);
-					g2.drawLine(cw/2, cw/2-5, cw/2, cw/2+5);
-				} else {
-					if (menuBar.eraser.isSelected()) {
-						g2.drawRect(cw/2-w/2, cw/2-w/2, w, w);
-					} else {
-						g2.drawOval(cw/2-w/2, cw/2-w/2, w, w);
-					}
-				}
-				g2.dispose();
-				Point hs = new Point(cw/2, cw/2);
-				Toolkit tk = Toolkit.getDefaultToolkit();
-				cursor = tk.createCustomCursor(i, hs, "cursor");
-			} else {
-				cursor = new Cursor(Cursor.DEFAULT_CURSOR);
-			}
-			return cursor;
-		}*/
 
 		public LinkedList<Coord> getPointsCircle(int x, int y, int w) {
 			int r = w/2; //Make the radius of the "circle" we're testing equal to the width/2
 			int pointX; //The x coordinate of the pixel currently being counted
 			int pointY; //The y coordinate of the pixel currently being counted
-			
+
 			LinkedList<Coord> points = new LinkedList<Coord>();
 			for (int xi = - r; xi <= r; xi++) {
 				pointX = xi + x;
@@ -1581,7 +1547,7 @@ public class MainPanel extends JPanel {
 	public class DrawingPanel extends JPanel {
 
 		DPCursor dpCursor = new DPCursor(this, Color.black, DPCursor.DEFAULTSHAPE, 1);
-		
+
 		public Dimension getMinimumSize() {
 			return getPreferredSize();
 		}
@@ -1598,25 +1564,22 @@ public class MainPanel extends JPanel {
 				public void mousePressed(MouseEvent evt) {
 					validate();
 					drawingData.handleMouseDown(evt);
+					//When we start drawing, the cursor will have the current brush color behind it.
+					//Change the cursor color so that it stays visible against that background.
+					if (dpCursor.shape == DPCursor.CIRCLE) {
+						dpCursor.makeCursorVisibleOn(drawingData.currentColor);
+						makeCursorCurrentDPCursor();
+					}
 				}
 				public void mouseReleased(MouseEvent evt) {
 					drawingData.handleMouseUp();
+
 				}
 			});
 			addMouseMotionListener(new MouseMotionAdapter() {
 				private int timesMouseMoved = 0;
 				public void mouseDragged(MouseEvent evt) {
 					drawingData.handleMouseDragged(evt);
-					if (timesMouseMoved < 15) {
-						timesMouseMoved++;
-					} else {
-						timesMouseMoved = 0;
-						DPCursor newCursor = dpCursor.getNew(evt.getX(), evt.getY());
-						if (!newCursor.equals(dpCursor)) {
-							dpCursor = newCursor;
-							setCursor(dpCursor.convertToCursor());
-						}
-					}
 				}
 				public void mouseMoved(MouseEvent evt) {
 					if (timesMouseMoved < 15) {
@@ -1665,9 +1628,41 @@ public class MainPanel extends JPanel {
 			}
 		}
 
-		
+		public float getBrightness2(Color c) {
+			float[] hsb;
+			hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
+			return hsb[2];
+		}
+
+		public int getBrightness(Color c) {
+			return c.getRed() + c.getGreen() + c.getBlue();
+		}
+
+		public float fractionOfPixelsBrighterThan(LinkedList<Coord> pixels, double threshold) {
+			float fraction = 0;
+			float brightness;
+			int numPixelsCounted = 0;
+			int numPixelsBrighter = 0;
+			float totalBrightness = 0;
+			for (Coord c: pixels) {
+				try {
+					brightness = getBrightness(drawingData.getColorAt(c.x, c.y));
+					totalBrightness += brightness;
+					if (brightness > threshold) {
+						numPixelsBrighter++;
+					}
+					numPixelsCounted++;
+				} catch (ArrayIndexOutOfBoundsException e) {}
+			}
+			if (numPixelsCounted > 0) {
+				fraction = (float)numPixelsBrighter / (float)numPixelsCounted;
+			}
+			System.out.println("Average brightness: " + (totalBrightness / (float)numPixelsCounted));
+			return fraction;
+		}
+
 		public int averagePixelBrightness(LinkedList<Coord> pixels) {
-			/* takes a bunch of Coords and gives the average "brightness" of the pixels within the DrawingPanel
+			/* takes a list of Coords and gives the average "brightness" of the pixels
 			 * that they represent. "Brightness" means the sum of the R, G, and B */
 			int totalPixelBrightness = 0;
 			Color pixelColor; //The color of the pixel currently being counted
@@ -1675,89 +1670,35 @@ public class MainPanel extends JPanel {
 			for (Coord c: pixels) {
 				try {
 					pixelColor = drawingData.getColorAt(c.x, c.y);
-					totalPixelBrightness += pixelColor.getRed() + pixelColor.getGreen() + pixelColor.getBlue();
+					totalPixelBrightness += getBrightness(pixelColor);
 					n++;
 				} catch (Exception e) {}
 			}
 			if (n == 0) return 0;
-			else return totalPixelBrightness / n;
-		}
-		
-		public void myDrawCircle(int centerX, int centerY, int w, int x, int y, Graphics2D g2) {
-
-			for (int xi = - w; xi <= w; xi++) {
-				int pointX = xi + centerX;
-				int pointY1 = centerY-(int)Math.sqrt(w*w-xi*xi);
-				int pointY2 = centerY+(int)Math.sqrt(w*w-xi*xi);
-				Color colorUnderneath1 = drawingData.getColorAt(x + pointX-w, y + pointY1-w);
-				Color colorUnderneath2 = drawingData.getColorAt(x + pointX-w, y + pointY2-w);				
-				if (colorUnderneath1.getRed() + colorUnderneath1.getGreen() + colorUnderneath1.getBlue() < 200) {
-					g2.setColor(Color.WHITE);
-				} else {
-					g2.setColor(Color.BLACK);
-				}
-				g2.drawRect(pointX, pointY1, 0, 0);
-				if (colorUnderneath2.getRed() + colorUnderneath2.getGreen() + colorUnderneath2.getBlue() < 200) {
-					g2.setColor(Color.WHITE);
-				} else {
-					g2.setColor(Color.BLACK);
-				}
-				g2.drawRect(pointX,pointY2, 0, 0);
-
+			else {
+				System.out.println((totalPixelBrightness / n));
+				return totalPixelBrightness / n;
 			}
+		}
+
+
+		public void makeCursorCurrentDPCursor() {
+			setCursor(dpCursor.convertToCursor());
 		}
 
 		public void setNewCursor() {
+			//Function to be called when we need to change the cursor, but it isn't 
+			//necessarily in the drawingPanel, so we can't test the pixels that it's over.
+			//Just set to black.
 			DPCursor newDPCursor = dpCursor.getNew(0, 0);
 			newDPCursor.color = Color.black;
-			//dpCursor = newDPCursor;
+			dpCursor = newDPCursor;
 			setCursor(newDPCursor.convertToCursor());
 		}
-		
-		/*public void setNewCursor(int x, int y) {
-			Cursor cursor = dpCursor.getNewCursor(x,  y);
-			setCursor(cursor);
-		}*/
 
-		/*public void setNewCursor() {
-			if (!menuBar.colorPicker.isSelected()) {
-				int w = controlPanel.getLineWidth();
-				if (w>0) {
-					if (w>100) w=100;
-					int cw;
-					if (w<9) {
-						cw = 11;
-					} else {
-						cw = w+2;
-					}
-					BufferedImage i = new BufferedImage(cw, cw, BufferedImage.TYPE_INT_ARGB);
-					Graphics2D g2 = (Graphics2D)i.getGraphics();
-					g2.setColor(drawingData.currentColor);
-					if (w < 3 && !menuBar.eraser.isSelected()) {
-						g2.drawLine(cw/2-5, cw/2, cw/2+5, cw/2);
-						g2.drawLine(cw/2, cw/2-5, cw/2, cw/2+5);
-					} else {
-						if (menuBar.eraser.isSelected()) {
-							g2.drawRect(cw/2-w/2, cw/2-w/2, w, w);
-						} else {
-							myDrawCircle(cw/2, cw/2, w/2, 0, 0, g2);
-							//g2.drawOval(cw/2-w/2, cw/2-w/2, w, w);
-						}
-					}
-					g2.dispose();
-					Point hs = new Point(cw/2, cw/2);
-					Toolkit tk = Toolkit.getDefaultToolkit();
-					Cursor cursor = tk.createCustomCursor(i, hs, "cursor");
-					setCursor(cursor);
-				}
-			} else {
-				Cursor cursor = new Cursor(Cursor.DEFAULT_CURSOR);
-				setCursor(cursor);
-			}
-		}*/
 	}
 
-	public class DrawingData extends JPanel {
+	public class DrawingData {
 		MainPanel container = null;
 		public int panelWidth;
 		public int panelHeight;
@@ -1773,7 +1714,6 @@ public class MainPanel extends JPanel {
 		Curve currentCurve = new Curve(-1, -1);
 		LinkedList<Curve> curves = new LinkedList<Curve>();
 		LinkedList<Curve> newCurves = new LinkedList<Curve>();
-		//BufferedImage displayedImage = new BufferedImage(panelWidth, panelHeight, BufferedImage.TYPE_INT_RGB);
 		Layer[] layers = new Layer[1];
 		int nextLayerID = 0;
 
@@ -2013,14 +1953,12 @@ public class MainPanel extends JPanel {
 		}
 		public void resize(Dimension newSize) {
 			BufferedImage resizedImage = new BufferedImage(newSize.width, newSize.height, BufferedImage.TYPE_INT_ARGB);
-			System.out.println("Entering resize loop");
 			for (int x = 0; x<i.getWidth(); x++) {
 				for (int y = 0; y < i.getHeight(); y++) {
 					int rgb = i.getRGB(x, y);
 					resizedImage.setRGB(x, y, rgb);
 				}
 			}
-			System.out.println("Exiting resize loop");
 			i = resizedImage;
 		}
 	}
@@ -2082,13 +2020,7 @@ public class MainPanel extends JPanel {
 			color = c;
 			erase = e;
 		}
-		/*public void addPoint(int x, int y) {
-     Coord lastPt = coords[coords.length-1];
-     Coord newPt = new Coord(x, y);
-     for (Coord coord: makeLine(lastPt, newPt)) {
-     myAddPoint(coord.x, coord.y);
-     }
-     }*/
+
 		public void addPoint(int x, int y) {
 			menuBar.save.setEnabled(true);
 			Coord[] coordsNew = new Coord[coords.length+1];
