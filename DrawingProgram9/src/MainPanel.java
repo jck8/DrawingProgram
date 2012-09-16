@@ -15,7 +15,6 @@ public class MainPanel extends JPanel {
 
 	public final String DEFAULT_PORT = "21476";
 
-	JFrame parentWindow;
 	Dimension drawingSize;
 	File currentFile = null;
 	DrawingData drawingData;
@@ -28,11 +27,9 @@ public class MainPanel extends JPanel {
 	Thread connectionThread = null;
 	Thread serverThread = null;
 	Menu menuBar = new Menu();
-	JPanel bgBox;
 
-	public MainPanel(DrawingWindow pw, File file, Dimension d, String ip, int port) {
+	public MainPanel(File file, Dimension d, String ip, int port) {
 
-		parentWindow = pw;
 		setLayout(new BorderLayout());
 		drawingData = new DrawingData();
 		drawingData.container = this;
@@ -51,7 +48,7 @@ public class MainPanel extends JPanel {
 		System.out.println("DrawingSize = " + drawingSize);
 
 		//Set up a gray-colored background for when the drawing area is smaller than the window...
-		bgBox = new JPanel();
+		JPanel bgBox = new JPanel();
 		bgBox.setLayout(new BoxLayout(bgBox, BoxLayout.Y_AXIS));
 		bgBox.setAlignmentX(JComponent.CENTER_ALIGNMENT);
 		bgBox.add(Box.createVerticalGlue());
@@ -83,7 +80,7 @@ public class MainPanel extends JPanel {
 		remove(scroller);
 		drawingPanel = new DrawingPanel();
 		drawingPanel.setPreferredSize(d);
-		bgBox = new JPanel();
+		JPanel bgBox = new JPanel();
 		bgBox.setLayout(new BoxLayout(bgBox, BoxLayout.Y_AXIS));
 		bgBox.setBackground(Color.lightGray);
 		bgBox.setAlignmentX(JComponent.CENTER_ALIGNMENT);
@@ -255,6 +252,33 @@ public class MainPanel extends JPanel {
 				}
 			};
 		}
+		
+		public void setControlsToNoConnection() {
+			controlPanel.serverButton.setEnabled(true);
+			controlPanel.connectButton.setEnabled(true);
+			controlPanel.serverButton.setText("Start server");
+			controlPanel.connectButton.setText("Connect...");
+			serverRunning = false;
+			connectedToServer = false;
+			System.out.println("Set controls to no connection");
+		}
+		public void setControlsToServerRunning() {
+			controlPanel.serverButton.setEnabled(true);
+			controlPanel.connectButton.setEnabled(false);
+			controlPanel.serverButton.setText("Stop server");
+			controlPanel.connectButton.setText("Connect...");
+			serverRunning = true;
+			connectedToServer = false;
+		}
+		public void setControlsToConnectedToServer() {
+			controlPanel.serverButton.setEnabled(false);
+			controlPanel.connectButton.setEnabled(true);
+			controlPanel.serverButton.setText("Start server");
+			controlPanel.connectButton.setText("End connection");
+			serverRunning = false;
+			connectedToServer = true;
+
+		}
 
 		public String generateLayerName(String init) {
 			int num = 0;
@@ -399,6 +423,7 @@ public class MainPanel extends JPanel {
 				} else {
 					writeDrawingToFile(file);
 					currentFile = file;
+					JFrame parentWindow = (JFrame)SwingUtilities.getWindowAncestor(drawingPanel);
 					parentWindow.setTitle(file.getName());
 				}
 			}
@@ -625,12 +650,10 @@ public class MainPanel extends JPanel {
 						DEFAULT_PORT); 
 				if (portInput != null) {
 					final int port = Integer.parseInt(portInput);
-					netController.startServer(port);
 					menuBar.server.setText("Stop Server");
 					menuBar.connect.setEnabled(false);
-					controlPanel.serverButton.setText("Stop Server");
-					controlPanel.connectButton.setEnabled(false);
-					serverRunning = true;
+					userResponder.setControlsToServerRunning();
+					netController.startServer(port);
 				}
 			} else {
 				netController.stopServer();
@@ -790,7 +813,14 @@ public class MainPanel extends JPanel {
 				menuBar.moveLayerBack.setEnabled(true);
 			}
 		}
-
+		public int getLineWidth() {
+			try { 
+				return Integer.parseInt(lineWidthField.getText());
+			} catch (NumberFormatException e) {
+				return 1;
+			}
+		}
+		
 		public ControlPanel() {
 
 			setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
@@ -821,16 +851,8 @@ public class MainPanel extends JPanel {
 			add(serverButton);
 			add(connectButton);
 			requestFocusInWindow();
-
 		}
 
-		public int getLineWidth() {
-			try { 
-				return Integer.parseInt(lineWidthField.getText());
-			} catch (NumberFormatException e) {
-				return 1;
-			}
-		}
 	}
 
 	public class NetController {
@@ -916,6 +938,7 @@ public class MainPanel extends JPanel {
 				connectionWaiter.start();
 			} catch (Exception e) {
 				consolePanel.tellUser("A connection error occurred: " + e);
+				userResponder.setControlsToNoConnection();
 			}
 		}
 
@@ -1097,8 +1120,7 @@ public class MainPanel extends JPanel {
 				} catch (Exception e) {
 					consolePanel.tellUser("Server problem 1 in method run: " + e);
 					serverRunning = false;
-					controlPanel.serverButton.setEnabled(true);
-					controlPanel.connectButton.setEnabled(true);
+					userResponder.setControlsToNoConnection();
 				}
 				while(serverRunning) {
 					try {
@@ -1158,8 +1180,7 @@ public class MainPanel extends JPanel {
 					} catch (Exception e) {
 						consolePanel.tellUser("Server problem 2 in method run: " + e);
 						serverRunning = false;
-						controlPanel.serverButton.setEnabled(true);
-						controlPanel.connectButton.setEnabled(true);
+						userResponder.setControlsToNoConnection();
 					}
 				}
 			}
@@ -1473,8 +1494,9 @@ public class MainPanel extends JPanel {
 		}
 
 		private int clipCursorSize(int preferredSize) {
-			/*The system we're on might not allow cursors that are preferredSize x preferredSize.
-			 * Return the closest width we can actually use, assuming a square-shaped cursor.
+			/* We want our cursor to take up an area that's preferredSize x preferredSize, 
+			 * but the system we're on might not allow cursors that size. Return the closest 
+			 * width/height we can actually use, assuming a square-shaped cursor.
 			 */
 			Toolkit tk = Toolkit.getDefaultToolkit();
 			Dimension closestAllowedDimension = 
@@ -1489,6 +1511,7 @@ public class MainPanel extends JPanel {
 		}
 
 		public void makeCursorVisibleOn(Color c) {
+			//Change our cursor color in order to be visible on a background of the given color.
 			if (dp.getBrightness(c) > COLORCHANGETHRESHOLD) {
 				System.out.println("changing to black");
 				color = Color.black;
@@ -1654,10 +1677,9 @@ public class MainPanel extends JPanel {
 					numPixelsCounted++;
 				} catch (ArrayIndexOutOfBoundsException e) {}
 			}
-			if (numPixelsCounted > 0) {
+			if (numPixelsCounted > 0) { //Avoid division by zero.
 				fraction = (float)numPixelsBrighter / (float)numPixelsCounted;
 			}
-			System.out.println("Average brightness: " + (totalBrightness / (float)numPixelsCounted));
 			return fraction;
 		}
 
@@ -1676,7 +1698,6 @@ public class MainPanel extends JPanel {
 			}
 			if (n == 0) return 0;
 			else {
-				System.out.println((totalPixelBrightness / n));
 				return totalPixelBrightness / n;
 			}
 		}

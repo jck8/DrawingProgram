@@ -1,12 +1,11 @@
 import javax.swing.*;
-
-
 import java.io.File;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.*;
 import java.awt.*;
+
 public class DrawingWindow extends JFrame {
 	public static final String DEFAULT_PORT = "21476";
 	public final int defaultWindowWidth = 1200;
@@ -28,7 +27,6 @@ public class DrawingWindow extends JFrame {
 					switch (key) {
 					case KeyEvent.VK_N: 
 						newWindow();
-						//new DrawingWindow();
 						break;
 					case KeyEvent.VK_O: 
 						open();
@@ -194,7 +192,7 @@ public class DrawingWindow extends JFrame {
 
 	public DrawingWindow() {
 		addWindowListener(wt);
-		mainPanel = new MainPanel(this, null, null, null, -1);
+		mainPanel = new MainPanel(null, null, null, -1);
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setContentPane(mainPanel);
 		setSize(defaultWindowWidth, defaultWindowHeight);
@@ -207,7 +205,7 @@ public class DrawingWindow extends JFrame {
 
 	public DrawingWindow(Dimension drawingSize, File file) {
 		addWindowListener(wt);
-		mainPanel = new MainPanel(this, file, drawingSize, null, -1);
+		mainPanel = new MainPanel(file, drawingSize, null, -1);
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setContentPane(mainPanel);
 		setSize(defaultWindowWidth, defaultWindowHeight);
@@ -221,7 +219,7 @@ public class DrawingWindow extends JFrame {
 	
 	public DrawingWindow(String ip, int port) {
 		addWindowListener(wt);
-		mainPanel = new MainPanel(this, null, null, ip, port);
+		mainPanel = new MainPanel(null, null, ip, port);
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setContentPane(mainPanel);
 		setSize(defaultWindowWidth, defaultWindowHeight);
