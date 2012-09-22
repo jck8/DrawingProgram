@@ -1592,11 +1592,11 @@ public class MainPanel extends JPanel {
 				timesMouseMoved++;
 			} else {
 				timesMouseMoved = 0;
-				DPCursor dpCursor = drawingPanel.dpCursor;
-				DPCursor newCursor = dpCursor.getNew(evt.getX(), evt.getY());
-				if (!newCursor.equals(dpCursor)) {
-					dpCursor = newCursor;
-					drawingPanel.setCursor(dpCursor.convertToCursor());
+				DPCursor oldCursor = drawingPanel.dpCursor;
+				DPCursor newCursor = oldCursor.getNew(evt.getX(), evt.getY());
+				if (!newCursor.equals(oldCursor)) {
+					drawingPanel.dpCursor = newCursor;
+					drawingPanel.setCursor(drawingPanel.dpCursor.convertToCursor());
 				}
 			}
 		}

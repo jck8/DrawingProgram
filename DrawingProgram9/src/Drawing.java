@@ -128,7 +128,7 @@ import java.util.LinkedList;
 			}
 		}
 		
-		public LinkedList<Coord> lineBetween(Coord pointA, Coord pointB) {
+		private LinkedList<Coord> lineBetween(Coord pointA, Coord pointB) {
 			Coord pt1;
 			Coord pt2;
 			if (pointA.x<pointB.x) {
