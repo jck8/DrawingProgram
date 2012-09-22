@@ -108,7 +108,6 @@ public class DrawingWindow extends JFrame {
 		initFrame.setContentPane(initPanel);
 		initFrame.pack();
 		initFrame.setLocationRelativeTo(null);
-		System.out.println("Height: " + initPanel.getHeight() + ". Width: " + initPanel.getWidth());
 		initFrame.setVisible(true);
 		initFrame.addWindowListener(wt);
 		return initFrame;

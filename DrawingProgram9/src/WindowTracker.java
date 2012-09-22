@@ -13,11 +13,8 @@ class WindowTracker extends WindowAdapter {
 			initFrame.setVisible(false);
 		}
 		numWindows++;
-		System.out.println("Window opened");
-		System.out.println(numWindows);
 	}
 	public void windowClosed(WindowEvent e) {
-		System.out.println("Window closed");
 		numWindows--;
 		if (numWindows == 1) {
 			initFrame.setVisible(true);
@@ -25,6 +22,5 @@ class WindowTracker extends WindowAdapter {
 		if (numWindows <= 0) {
 			System.exit(0);
 		}
-		System.out.println(numWindows);
 	}
 }

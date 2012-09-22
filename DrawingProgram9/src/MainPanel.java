@@ -17,7 +17,7 @@ public class MainPanel extends JPanel {
 
 	Dimension drawingSize;
 	File currentFile = null;
-	DrawingData drawingData;
+	Drawing drawing;
 	DrawingPanel drawingPanel;
 	ControlPanel controlPanel;
 	ConsolePanel consolePanel;
@@ -26,13 +26,14 @@ public class MainPanel extends JPanel {
 	NetController netController = new NetController();
 	Thread connectionThread = null;
 	Thread serverThread = null;
+	FileHandler fileHandler = new FileHandler();
 	Menu menuBar = new Menu();
 
 	public MainPanel(File file, Dimension d, String ip, int port) {
 
 		setLayout(new BorderLayout());
-		drawingData = new DrawingData();
-		drawingData.container = this;
+		drawing = new Drawing();
+		drawing.container = this;
 
 		if (d != null) {
 			drawingSize = d;
@@ -45,7 +46,6 @@ public class MainPanel extends JPanel {
 			drawingPanel.setMaximumSize(drawingSize);
 			drawingPanel.setMinimumSize(drawingSize);
 		}
-		System.out.println("DrawingSize = " + drawingSize);
 
 		//Set up a gray-colored background for when the drawing area is smaller than the window...
 		JPanel bgBox = new JPanel();
@@ -63,7 +63,20 @@ public class MainPanel extends JPanel {
 		add(controlPanel, BorderLayout.SOUTH);
 		add(consolePanel, BorderLayout.EAST);
 		if (file != null) {
-			userResponder.openFile(file);
+			try {
+				drawing = fileHandler.openFile(file);
+			} catch (FileNotFoundException e) {
+				System.out.println("File not found: " + e);
+			} catch (IOException e) {
+				System.out.println("IOException: " + e);
+			}
+			for (Layer l: drawing.layers) {
+				System.out.println("Layer named: " + l.name);
+			}
+			drawingPanel.setPreferredSize(new Dimension(drawing.panelWidth, drawing.panelHeight));
+			controlPanel.refigureLayers();
+			controlPanel.setCurrentLayer(drawing.layers[0].name);
+			drawingPanel.repaint();
 			currentFile = file;
 		}
 		if (ip != null) {
@@ -180,7 +193,7 @@ public class MainPanel extends JPanel {
 			};
 			colorHandler = new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
-					changeColor(JColorChooser.showDialog(controlPanel, "New Color", drawingData.currentColor));
+					changeColor(JColorChooser.showDialog(controlPanel, "New Color", drawing.currentColor));
 				}
 			};
 			addLayerHandler = new ActionListener() {
@@ -210,11 +223,12 @@ public class MainPanel extends JPanel {
 			};
 			layerVisibleHandler = new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
-					Layer currentLayer = drawingData.layers[controlPanel.getCurrentLayer()];
+					Layer currentLayer = drawing.layers[controlPanel.getCurrentLayer()];
 					boolean checkBoxState = menuBar.layerVisible.isSelected();
 					if (currentLayer.visible != checkBoxState) {
 						currentLayer.setVisible(checkBoxState);
 					}
+					drawingPanel.repaint();
 				}
 			};
 			layerSelectHandler = new ActionListener() {
@@ -252,7 +266,7 @@ public class MainPanel extends JPanel {
 				}
 			};
 		}
-		
+
 		public void setControlsToNoConnection() {
 			controlPanel.serverButton.setEnabled(true);
 			controlPanel.connectButton.setEnabled(true);
@@ -277,135 +291,26 @@ public class MainPanel extends JPanel {
 			controlPanel.connectButton.setText("End connection");
 			serverRunning = false;
 			connectedToServer = true;
-
-		}
-
-		public String generateLayerName(String init) {
-			int num = 0;
-			String name = init;
-			while (drawingData.layerExists(name)) {
-				num = num + 1;
-				name = init + "_" + num;
-			}
-			return name;
-		}
-
-		public void insertImage(BufferedImage img, String name) {
-			int rgb;
-			int w;
-			int h;
-			Layer newLayer;
-			name = generateLayerName(name);
-			w = img.getWidth();
-			h = img.getHeight();
-			System.out.println("Adding layer " + name);
-			newLayer = drawingData.addLayer(w, h, name);
-			System.out.println("Layer " + name + " added");
-			System.out.println("w="+w);
-			System.out.println("h="+h);
-			newLayer.i = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-			System.out.println("Setting RGBs for " + name);
-			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < h; y++) {
-					rgb = img.getRGB(x, y);
-					newLayer.i.setRGB(x, y, rgb);
-				}
-			}
-			System.out.println("Set RGBs for " + name);
-			System.out.println("Selected item in insertImage: " + controlPanel.layerSelect.getSelectedItem());
-			controlPanel.refigureLayers();
-			System.out.println("Layers refigured for " + name);
-			drawingPanel.repaint();
-		}
-
-		public void openFile (File file) {
-			String currentLayerName = "";
-			String chunk;
-			FileReader fr;
-			String[] chunkSplit;
-			BufferedReader br;
-			BufferedImage img;
-			String imageText = "";
-			drawingData.layers = new Layer[0];
-			drawingData.firstLayerAdded = true; //Necessary so we don't overwrite our new layer when we repaint drawingPanel 
-			try {
-				fr = new FileReader(file);
-				br = new BufferedReader(fr);
-				while ((chunk = getChunk(br)) != null) {
-					if (chunk.startsWith("NAMEIS")) {
-						if (!imageText.equals("!")) {
-							InputStream is = new ByteArrayInputStream(imageText.getBytes());
-							img = ImageIO.read(is);
-							insertImage(img, currentLayerName);
-						} 
-						imageText = "";
-						chunkSplit = chunk.split(":");
-						int len = chunkSplit[1].length();
-						currentLayerName = chunkSplit[1].substring(0, len-1);
-
-					} else {
-						imageText = imageText + chunk;
-					}
-				}
-				System.out.println(currentLayerName);
-				if (currentLayerName.equals("")) {
-					currentLayerName = "Imported Image";
-				}
-				System.out.println(currentLayerName);
-				InputStream is = new ByteArrayInputStream(imageText.getBytes());
-				img = ImageIO.read(is);
-				System.out.println("Width:" + img.getWidth() + ". Height: " + img.getHeight());
-				System.out.println("About to insert Image");
-				insertImage(img, currentLayerName);
-				System.out.println("Inserted image");
-				drawingData.panelWidth = img.getWidth();
-				drawingData.panelHeight = img.getHeight();
-				drawingPanel.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
-				controlPanel.setCurrentLayer(currentLayerName);
-			} catch (Exception e) {
-				consolePanel.tellUser("Error reading file: " + e);
-			}
-		}
-
-		public String getChunk(BufferedReader br) {
-			int i = -1;
-			try {
-				i = br.read();
-				if (i == -1) {
-					System.out.println("getChunk returning null");
-					return null;
-				}
-			} catch (Exception e) {
-				System.out.println("Error reading file 1: " + e);
-			}
-			char c = (char)i;
-			String s = c + "";
-			while (i != -1 && c != '!') {
-				try {
-					br.mark(1);
-					i = br.read();
-				} catch (Exception e) {
-					System.out.println("Error reading file 2: " + e);
-				}
-				c = (char)i;
-				s = s + c;
-			}
-			if (i == -1) {
-				try {
-					br.reset();
-				} catch (Exception e) {
-					System.out.println("Error reading file 3: " + e);
-				}
-				return s;
-			} else return (s);
 		}
 
 		public void save() {
 			if (currentFile != null) {
-				writeDrawingToFile(currentFile);
-				consolePanel.tellUser("File saved");
+				tryToWriteDrawing(currentFile);
 			} else {
 				saveAs();
+			}
+		}
+
+		public void tryToWriteDrawing(File file) {
+			try {
+				fileHandler.writeDrawingToFile(file, drawing);
+				System.out.println("File saved");
+				menuBar.save.setEnabled(false);
+				currentFile = file;
+				JFrame parentWindow = (JFrame)SwingUtilities.getWindowAncestor(drawingPanel);
+				parentWindow.setTitle(file.getName());
+			} catch (IOException e) {
+				System.out.println("IOException: " + e);
 			}
 		}
 
@@ -416,52 +321,13 @@ public class MainPanel extends JPanel {
 				if (file.exists()) {
 					if (JOptionPane.showConfirmDialog(null, "Overwrite existing file?", "Overwrite?", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
 						consolePanel.tellUser("Overwriting file...");
-						writeDrawingToFile(file);
+						tryToWriteDrawing(file);
 					} else {
 						consolePanel.tellUser("Cancelled...");
 					}
 				} else {
-					writeDrawingToFile(file);
-					currentFile = file;
-					JFrame parentWindow = (JFrame)SwingUtilities.getWindowAncestor(drawingPanel);
-					parentWindow.setTitle(file.getName());
+					tryToWriteDrawing(file);
 				}
-			}
-		}
-
-		public void writeDrawingToFile(File file) {
-			FileWriter fw;
-			PrintWriter pw;
-			Iterator<ImageWriter> iter;
-			ImageWriter writer;
-			ImageWriteParam iwp;
-			FileImageOutputStream output;
-			IIOImage img;
-			try {
-				iter = ImageIO.getImageWritersByFormatName("png");
-				writer = (ImageWriter)iter.next();
-				iwp = writer.getDefaultWriteParam();
-				output = new FileImageOutputStream(file);
-				writer.setOutput(output);
-				fw = new FileWriter(file);
-				pw = new PrintWriter(fw);
-				synchronized(file) {
-					for (Layer layer: drawingData.layers) {
-						pw.print("!NAMEIS:" + layer.name + "!");
-						System.out.println("Saving layer " + layer.name);
-						pw.close();
-						output.seek(file.length());
-						writer.setOutput(output);
-						img = new IIOImage(layer.i, null, null);
-						writer.write(null, img, iwp);
-						fw = new FileWriter(file, true);
-						pw = new PrintWriter(fw);
-					}
-				}
-				menuBar.save.setEnabled(false);
-				writer.dispose();
-			} catch (Exception e){
-				consolePanel.tellUser("Error writing file: " + e);
 			}
 		}
 
@@ -472,23 +338,12 @@ public class MainPanel extends JPanel {
 				if (file.exists()) {
 					if (JOptionPane.showConfirmDialog(null, "Overwrite existing file?", "Overwrite?", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
 						consolePanel.tellUser("Overwriting file...");
-						writeDrawingToFile(file);
+						fileHandler.exportFile(file, drawing);
 					} else {
 						consolePanel.tellUser("Cancelled...");
 					}
 				} else {
-					BufferedImage toSave = new BufferedImage(drawingData.panelWidth, drawingData.panelHeight, BufferedImage.TYPE_INT_RGB);
-					for (int x = 0; x < drawingData.panelWidth; x++) {
-						for (int y = 0; y < drawingData.panelHeight; y++) {
-							toSave.setRGB(x, y, drawingData.getColorAt(x, y).getRGB());
-						}
-					}
-					try {
-						ImageIO.write(toSave, "png", file);
-						consolePanel.tellUser("File " + file.getName() + " has been successfully written.");
-					} catch (Exception e) {
-						consolePanel.tellUser("Error writing file: " + e);
-					}
+					fileHandler.exportFile(file, drawing);
 				}
 			}
 		}
@@ -521,7 +376,7 @@ public class MainPanel extends JPanel {
 		}
 
 		public void changeColor(Color c) {
-			drawingData.currentColor = c;
+			drawing.currentColor = c;
 			setBorder(BorderFactory.createLineBorder(c, 2));
 			consolePanel.setBorder(BorderFactory.createLineBorder(c, 2));
 			drawingPanel.setNewCursor();
@@ -539,12 +394,13 @@ public class MainPanel extends JPanel {
 					null,
 					defaultName);
 			if (name != null) {
-				if (drawingData.layerExists(name)) {
+				if (drawing.layerExists(name)) {
 					JOptionPane.showMessageDialog(null, "Name already in use! Please choose another.", "Cannot create layer", JOptionPane.ERROR_MESSAGE);
 					addLayer();
 				} else {
-					drawingData.addLayer(drawingData.panelWidth, drawingData.panelHeight, name);
-					netController.addLayer(-1, drawingData.panelWidth, drawingData.panelHeight, name);
+					drawing.addLayer(drawing.panelWidth, drawing.panelHeight, name);
+					netController.addLayer(-1, drawing.panelWidth, drawing.panelHeight, name);
+					menuBar.save.setEnabled(true);
 					controlPanel.refigureLayers();
 					controlPanel.layerSelect.setSelectedIndex(0);
 				}
@@ -553,18 +409,18 @@ public class MainPanel extends JPanel {
 
 		public void hideCurrentLayer() {
 			int currentLayer = controlPanel.getCurrentLayer();
-			drawingData.layers[currentLayer].visible = false;
+			drawing.layers[currentLayer].visible = false;
 			drawingPanel.repaint();
 		}
 
 		public void showCurrentLayer() {
 			int currentLayer = controlPanel.getCurrentLayer();
-			drawingData.layers[currentLayer].visible = true;
+			drawing.layers[currentLayer].visible = true;
 			drawingPanel.repaint();
 		}
 
 		public void reactToLayerSelection() {
-			Layer currentLayer = drawingData.layers[controlPanel.getCurrentLayer()];
+			Layer currentLayer = drawing.layers[controlPanel.getCurrentLayer()];
 			if (menuBar.layerVisible.isSelected() != currentLayer.visible) {
 				menuBar.layerVisible.setSelected(currentLayer.visible);
 			}
@@ -576,7 +432,8 @@ public class MainPanel extends JPanel {
 			int currentLayer = controlPanel.getCurrentLayer();
 			int maxLayer = controlPanel.getMaxLayer();
 			if (currentLayer < maxLayer) {
-				drawingData.swapLayers(currentLayer, currentLayer+1);
+				drawing.swapLayers(currentLayer, currentLayer+1);
+				menuBar.save.setEnabled(true);
 				controlPanel.refigureLayers();
 				controlPanel.layerSelect.setSelectedItem(currentItem);
 				drawingPanel.repaint();
@@ -590,7 +447,7 @@ public class MainPanel extends JPanel {
 			Object currentItem = controlPanel.layerSelect.getSelectedItem();
 			int currentLayer = controlPanel.getCurrentLayer();
 			if (currentLayer > 0) {
-				drawingData.swapLayers(currentLayer, currentLayer-1);
+				drawing.swapLayers(currentLayer, currentLayer-1);
 				controlPanel.refigureLayers();
 				controlPanel.layerSelect.setSelectedItem(currentItem);
 				drawingPanel.repaint();
@@ -665,6 +522,170 @@ public class MainPanel extends JPanel {
 			}
 		}
 	} 
+
+	public class FileHandler {
+
+		private String generateLayerName(String init, Drawing newDrawing) {
+			int num = 0;
+			String name = init;
+			while (newDrawing.layerExists(name)) {
+				num = num + 1;
+				name = init + "_" + num;
+			}
+			return name;
+		}
+
+		private void insertImage(BufferedImage img, String name, Drawing newDrawing) {
+			int rgb;
+			int w;
+			int h;
+			Layer newLayer;
+			name = generateLayerName(name, newDrawing);
+			w = img.getWidth();
+			h = img.getHeight();
+			newLayer = newDrawing.addLayer(w, h, name);
+			for (Layer l: newDrawing.layers) {
+				System.out.println("Layer in newDrawing1 named: " + l.name);
+			}
+			newLayer.i = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+			for (int x = 0; x < w; x++) {
+				for (int y = 0; y < h; y++) {
+					rgb = img.getRGB(x, y);
+					newLayer.i.setRGB(x, y, rgb);
+				}
+			}
+			menuBar.save.setEnabled(true);
+		}
+
+		public Drawing openFile (File file) throws FileNotFoundException, IOException {
+			String currentLayerName = "";
+			String chunk;
+			FileReader fr;
+			String[] chunkSplit;
+			BufferedReader br;
+			BufferedImage img;
+			String imageText = "";
+			Drawing newDrawing = new Drawing();
+			newDrawing.layers = new Layer[0];
+			newDrawing.firstLayerAdded = true; //Necessary so we don't overwrite our new layer the first time we repaint drawingPanel 
+			fr = new FileReader(file);
+			br = new BufferedReader(fr);
+			while ((chunk = getChunk(br)) != null) {
+				if (chunk.startsWith("NAMEIS")) {
+					if (!imageText.equals("!")) {
+						InputStream is = new ByteArrayInputStream(imageText.getBytes());
+						img = ImageIO.read(is);
+						insertImage(img, currentLayerName, newDrawing);
+					} 
+					imageText = "";
+					chunkSplit = chunk.split(":");
+					int len = chunkSplit[1].length();
+					currentLayerName = chunkSplit[1].substring(0, len-1);
+
+				} else {
+					imageText = imageText + chunk;
+				}
+			}
+			if (currentLayerName.equals("")) {
+				currentLayerName = "Imported Image";
+			}
+			InputStream is = new ByteArrayInputStream(imageText.getBytes());
+			img = ImageIO.read(is);
+			insertImage(img, currentLayerName, newDrawing);
+
+			newDrawing.panelWidth = img.getWidth();
+			newDrawing.panelHeight = img.getHeight();
+
+			return newDrawing;
+		}
+
+		private String getChunk(BufferedReader br) {
+			//Customized function for getting the next "chunk" of text from a BufferedReader. 
+			//Similar to readLine(), but uses '!' as a delimiter between chunks. readLine has 
+			//multiple delimiters (linefeeds, carriage returns, linefeeds+carriage returns), 
+			//and there doesn't seem to be any way to tell which one ended a particular line. 
+			//Using readLine would thus lead to data loss if used to read image files.
+			int i = -1;
+			try {
+				i = br.read();
+				if (i == -1) {
+					System.out.println("getChunk returning null");
+					return null;
+				}
+			} catch (Exception e) {
+				System.out.println("Error reading file 1: " + e);
+			}
+			char c = (char)i;
+			String s = c + "";
+			while (i != -1 && c != '!') {
+				try {
+					br.mark(1);
+					i = br.read();
+				} catch (Exception e) {
+					System.out.println("Error reading file 2: " + e);
+				}
+				c = (char)i;
+				s = s + c;
+			}
+			if (i == -1) {
+				try {
+					br.reset();
+				} catch (Exception e) {
+					System.out.println("Error reading file 3: " + e);
+				}
+				return s;
+			} else return (s);
+		}
+
+
+		public void writeDrawingToFile(File file, Drawing drawingToSave) throws IOException {
+			FileWriter fw;
+			PrintWriter pw;
+			Iterator<ImageWriter> iter;
+			ImageWriter writer;
+			ImageWriteParam iwp;
+			FileImageOutputStream output;
+			IIOImage img;
+			iter = ImageIO.getImageWritersByFormatName("png");
+			writer = (ImageWriter)iter.next();
+			iwp = writer.getDefaultWriteParam();
+			output = new FileImageOutputStream(file);
+			writer.setOutput(output);
+			fw = new FileWriter(file);
+			pw = new PrintWriter(fw);
+			synchronized(file) {
+				for (Layer layer: drawingToSave.layers) {
+					pw.print("!NAMEIS:" + layer.name + "!");
+					pw.close();
+					output.seek(file.length());
+					writer.setOutput(output);
+					img = new IIOImage(layer.i, null, null);
+					writer.write(null, img, iwp);
+					fw = new FileWriter(file, true);
+					pw = new PrintWriter(fw);
+				}
+			}
+			pw.close();
+			writer.dispose();
+
+		}
+
+		public void exportFile(File file, Drawing d) {
+			BufferedImage toSave = new BufferedImage(d.panelWidth, d.panelHeight, BufferedImage.TYPE_INT_RGB);
+			for (int x = 0; x < d.panelWidth; x++) {
+				for (int y = 0; y < d.panelHeight; y++) {
+					toSave.setRGB(x, y, d.getColorAt(x, y).getRGB());
+				}
+			}
+			try {
+				ImageIO.write(toSave, "png", file);
+				System.out.println("File " + file.getName() + " has been successfully written.");
+			} catch (Exception e) {
+				System.out.println("Error writing file: " + e);
+			}
+		}
+
+	}
 
 	public class Menu extends JMenuBar {
 
@@ -783,18 +804,14 @@ public class MainPanel extends JPanel {
 		public void refigureLayers() {
 			Object oldItem = layerSelect.getSelectedItem();
 			layerSelect.removeAllItems();
-			System.out.println("refigureLayers about to enter insertion loop");
-			for (Layer layer: drawingData.layers) {
+			for (Layer layer: drawing.layers) {
 				layerSelect.insertItemAt(layer.name, 0);
 			}
-			System.out.println("refigureLayers exited insertion loop");
-			System.out.println("Selected item: " + oldItem);
 			if (oldItem == null) {
 				layerSelect.setSelectedIndex(0);
 			} else {
 				layerSelect.setSelectedItem(oldItem);
 			}
-			System.out.println("refigureLayers setSelectedItem");
 			refigureLayerButtons();
 		}
 		public void refigureLayerButtons() {
@@ -820,7 +837,7 @@ public class MainPanel extends JPanel {
 				return 1;
 			}
 		}
-		
+
 		public ControlPanel() {
 
 			setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
@@ -973,7 +990,6 @@ public class MainPanel extends JPanel {
 			try {
 				i = br.read();
 				if (i == -1) {
-					System.out.println("getChunk returning null");
 					return null;
 				}
 			} catch (Exception e) {
@@ -1002,8 +1018,8 @@ public class MainPanel extends JPanel {
 		}
 
 		public void correctDimensions(Connection connection) {
-			int myWidth = drawingData.panelWidth;
-			int myHeight = drawingData.panelHeight;
+			int myWidth = drawing.panelWidth;
+			int myHeight = drawing.panelHeight;
 			connection.outStream.println(myWidth);
 			connection.outStream.println(myHeight);
 			connection.outStream.flush();
@@ -1028,20 +1044,20 @@ public class MainPanel extends JPanel {
 			consolePanel.tellUser("Correcting dimensions within correctDimensions");
 			if (newHeight != myHeight || newWidth != myWidth) {
 				Dimension newDim = new Dimension(newWidth, newHeight);
-				drawingData.resizeAllLayers(newDim);
+				drawing.resizeAllLayers(newDim);
 				consolePanel.tellUser("Layers resized within correctDimensions");
-				drawingData.panelWidth = newDim.width;
-				drawingData.panelHeight = newDim.height;
+				drawing.panelWidth = newDim.width;
+				drawing.panelHeight = newDim.height;
 				consolePanel.tellUser("Resizing drawing Panel");
-				System.out.println("drawingData.container: " + drawingData.container);
+				System.out.println("drawingData.container: " + drawing.container);
 				consolePanel.tellUser("drawingData.container exists");
-				drawingData.container.resizeDrawingPanel(newDim);
+				drawing.container.resizeDrawingPanel(newDim);
 
 			}
 		}
 
 		public void sendLayersToServer(Connection connection) {
-			for (Layer l: drawingData.layers) {
+			for (Layer l: drawing.layers) {
 				consolePanel.tellUser("Sending layer to server: " + l.name);
 				connection.addLayerWithImage(myID, l.name, l.i);
 			}
@@ -1063,7 +1079,7 @@ public class MainPanel extends JPanel {
 				String newName = processedIn[3];
 				consolePanel.tellUser("Renaming " + oldName + " to " + newName + ".");
 				int oldLayerIndex = controlPanel.getCurrentLayerSelectIndex();
-				for (Layer l: drawingData.layers) {
+				for (Layer l: drawing.layers) {
 					if (l.name.equals(oldName)) {
 						l.name = newName;
 						controlPanel.refigureLayers();
@@ -1147,7 +1163,8 @@ public class MainPanel extends JPanel {
 							newLayerName = oldLayerName + "(" + processedIn[1] + ")";
 							int width = Integer.parseInt(processedIn[2]);
 							int height = Integer.parseInt(processedIn[3]);
-							newLayer = drawingData.insertLayer(width, height, newLayerName, insertionPoint);
+							newLayer = drawing.insertLayer(width, height, newLayerName, insertionPoint);
+							menuBar.save.setEnabled(true);
 							try {
 								newLayer.i = getImageFromReader(newConnection.inStream);
 							} catch (Exception e) {
@@ -1162,7 +1179,7 @@ public class MainPanel extends JPanel {
 						newConnection.outStream.println("DONE");
 						newConnection.outStream.flush();
 						System.out.println("Just sent DONE from server");
-						for (Layer l: drawingData.layers) {
+						for (Layer l: drawing.layers) {
 							if (!newLayers.contains(l)) {
 								newConnection.addLayerWithImage(0, l.name, l.i);
 								System.out.println("Sending layer " + l.name + "from server.");
@@ -1300,7 +1317,7 @@ public class MainPanel extends JPanel {
 				}
 				processedIn = in.split(";"); 
 				if (processedIn[0].equals("NEW")) {
-					/*The start of a new line */
+					/*The start of a new curve */
 					consolePanel.tellUser("Received 'NEW'");
 					receivedID = Integer.parseInt(processedIn[1]);
 					remoteLineWidth = Integer.parseInt(processedIn[2]);
@@ -1315,17 +1332,20 @@ public class MainPanel extends JPanel {
 						activeRemoteCurves = new Curve[receivedID+1];
 						System.arraycopy(temp, 0, activeRemoteCurves, 0, activeRemoteCurves.length);
 					}
-					activeRemoteCurves[receivedID] = drawingData.startNewCurve(x, y, remoteLineWidth, remoteColor, erase, layer);
+					activeRemoteCurves[receivedID] = drawing.startNewCurve(x, y, remoteLineWidth, remoteColor, erase, layer);
+					menuBar.save.setEnabled(true);
 					if (serverRunning) {
 						netController.sendNewCurve(receivedID, x, y, remoteLineWidth, remoteColor, erase, layer);
 					}
 				}
 				else if (processedIn[0].equals("PT")) {
-					/*A new point is being added to the connector's current line*/
+					/*A new point is being added to the connector's current curve*/
 					receivedID = Integer.parseInt(processedIn[1]);
 					x = Integer.parseInt(processedIn[2]);
 					y = Integer.parseInt(processedIn[3]);
-					drawingData.addToCurve(x, y, activeRemoteCurves[receivedID]);
+					drawing.addToCurve(x, y, activeRemoteCurves[receivedID]);
+					drawingPanel.repaint();
+					menuBar.save.setEnabled(true);
 					if (serverRunning) {
 						netController.addToCurve(receivedID, x, y);
 					}
@@ -1336,17 +1356,18 @@ public class MainPanel extends JPanel {
 					int width = Integer.parseInt(processedIn[2]);
 					int height = Integer.parseInt(processedIn[3]);
 					String name = processedIn[4];
-					Layer newLayer = drawingData.addLayer(width, height, name);
+					Layer newLayer = drawing.addLayer(width, height, name);
+					menuBar.save.setEnabled(true);
 					System.out.println("Receiving layer " + name);
 					newLayer.id = receivedID;
 					controlPanel.refigureLayers();
 				}
 				else if (processedIn[0].equals("RL")) {
-					/*Connector wanted to rename layer*/
+					/*Connector wants to rename layer*/
 					receivedID = Integer.parseInt(processedIn[1]);
 					String oldName = processedIn[2];
 					String newName = processedIn[3];
-					for (Layer l: drawingData.layers) {
+					for (Layer l: drawing.layers) {
 						if (l.name == oldName) {
 							l.name = newName;
 						}
@@ -1359,7 +1380,8 @@ public class MainPanel extends JPanel {
 					int width = Integer.parseInt(processedIn[2]);
 					int height = Integer.parseInt(processedIn[3]);
 					String name = processedIn[4];
-					Layer newLayer = drawingData.addLayer(width, height, name);
+					Layer newLayer = drawing.addLayer(width, height, name);
+					menuBar.save.setEnabled(true);
 					System.out.println("Receiving layer with image " + name);
 					try {
 						newLayer.i = getImageFromReader(inStream);
@@ -1374,7 +1396,8 @@ public class MainPanel extends JPanel {
 					receivedID = Integer.parseInt(processedIn[1]);
 					int l1 = Integer.parseInt(processedIn[2]);
 					int l2 = Integer.parseInt(processedIn[3]);
-					drawingData.swapLayers(l1, l2);
+					menuBar.save.setEnabled(true);
+					drawing.swapLayers(l1, l2);
 					controlPanel.refigureLayers();
 					drawingPanel.repaint();
 				}
@@ -1440,14 +1463,6 @@ public class MainPanel extends JPanel {
 			color = c;
 			width = w;
 		}
-
-		/*public Color chooseColor (int x, int y) {
-			if (dp.averagePixelBrightness(cw/2, cw/2, w/2, x, y) > 400) {
-				g2.setColor(Color.BLACK);
-			} else {
-				g2.setColor(Color.WHITE);
-			}
-		}*/
 
 		public Boolean equals(DPCursor c) {
 			if (this.width == c.width && this.shape == c.shape && this.color.equals(c.color)) {
@@ -1522,7 +1537,7 @@ public class MainPanel extends JPanel {
 		}
 
 		public DPCursor getNew(int x, int y) {
-			/* When passed the current mouse coordinates, returns a cursor that should be appropriate to the mouse's
+			/* When passed the current mouse coordinates, return a cursor appropriate to the mouse's
 			 * current location: white if it's on a dark background, black if on a light background. */
 			int newWidth;
 			int newShape;
@@ -1567,6 +1582,93 @@ public class MainPanel extends JPanel {
 		}
 	}
 
+	public class DPMouseMotionListener extends MouseMotionAdapter {
+		private int timesMouseMoved = 0;
+		public void mouseDragged(MouseEvent evt) {
+			handleMouseDragged(evt);
+		}
+		public void mouseMoved(MouseEvent evt) {
+			if (timesMouseMoved < 15) {
+				timesMouseMoved++;
+			} else {
+				timesMouseMoved = 0;
+				DPCursor dpCursor = drawingPanel.dpCursor;
+				DPCursor newCursor = dpCursor.getNew(evt.getX(), evt.getY());
+				if (!newCursor.equals(dpCursor)) {
+					dpCursor = newCursor;
+					drawingPanel.setCursor(dpCursor.convertToCursor());
+				}
+			}
+		}
+		public void handleMouseDragged(MouseEvent evt) {
+			int x = evt.getX();
+			int y = evt.getY();
+			if (drawing.layers[controlPanel.getCurrentLayer()].visible && !menuBar.colorPicker.isSelected()) {
+				drawing.currentCurve.addPoint(x, y);
+				menuBar.save.setEnabled(true);
+				if (netController != null && netController.connected == true) {
+					netController.addToCurve(-1, x, y);
+				}
+				drawingPanel.repaint();
+			} else if (menuBar.colorPicker.isSelected()) {
+				if (x<drawingPanel.getWidth() && x>0 && y<drawingPanel.getHeight() && y>0)
+					userResponder.changeColor(drawing.getColorAt(x, y));
+			}
+		}
+	}
+	
+	public class DPMouseListener extends MouseAdapter {
+		boolean mouseDown = false;
+		int lastX;
+		int lastY;
+		int lineWidth;
+
+		public void mousePressed(MouseEvent evt) {
+			drawingPanel.validate();
+			handleMouseDown(evt);
+			//When we start drawing, the cursor will have the current brush color behind it.
+			//Change the cursor color so that it stays visible against that background.
+			if (drawingPanel.dpCursor.shape == DPCursor.CIRCLE) {
+				drawingPanel.dpCursor.makeCursorVisibleOn(drawing.currentColor);
+				drawingPanel.makeCursorCurrentDPCursor();
+			}
+		}
+		public void mouseReleased(MouseEvent evt) {
+			handleMouseUp();
+		}
+
+		public void handleMouseDown(MouseEvent evt) {
+			int x = evt.getX();
+			int y = evt.getY();
+			if (!drawing.layers[controlPanel.getCurrentLayer()].visible && !menuBar.colorPicker.isSelected()) {
+				JOptionPane.showMessageDialog(null, "The current layer is invisible.", "Can't draw there", JOptionPane.ERROR_MESSAGE);
+			} else if (menuBar.colorPicker.isSelected()) {
+				if (x<drawingPanel.getWidth() && x>0 && y<drawingPanel.getHeight() && y>0)
+					userResponder.changeColor(drawing.getColorAt(x, y));
+			} else {
+				lineWidth = controlPanel.getLineWidth();
+				lastX = x;
+				lastY = y;
+				mouseDown = true;
+				boolean erase = menuBar.eraser.isSelected();
+				drawing.currentCurve = new Curve(lastX, lastY, lineWidth, drawing.currentColor, controlPanel.getCurrentLayer(), erase);
+				synchronized(drawing.curves) {
+					drawing.curves.add(drawing.currentCurve);
+				}
+				//newCurves.add(currentCurve);
+				if (netController!=null && netController.connected == true) {
+					netController.sendNewCurve(-1, lastX, lastY, lineWidth, drawing.currentColor, erase, controlPanel.getCurrentLayer());
+				}
+				menuBar.save.setEnabled(true);
+				drawingPanel.repaint();
+			}
+		}
+		public void handleMouseUp() {
+			mouseDown = false;
+			drawing.currentCurve.done = true;
+		}
+	}
+
 	public class DrawingPanel extends JPanel {
 
 		DPCursor dpCursor = new DPCursor(this, Color.black, DPCursor.DEFAULTSHAPE, 1);
@@ -1581,72 +1683,37 @@ public class MainPanel extends JPanel {
 
 		public DrawingPanel() {
 			setBackground(Color.WHITE);
-
-
-			addMouseListener(new MouseAdapter() {
-				public void mousePressed(MouseEvent evt) {
-					validate();
-					drawingData.handleMouseDown(evt);
-					//When we start drawing, the cursor will have the current brush color behind it.
-					//Change the cursor color so that it stays visible against that background.
-					if (dpCursor.shape == DPCursor.CIRCLE) {
-						dpCursor.makeCursorVisibleOn(drawingData.currentColor);
-						makeCursorCurrentDPCursor();
-					}
-				}
-				public void mouseReleased(MouseEvent evt) {
-					drawingData.handleMouseUp();
-
-				}
-			});
-			addMouseMotionListener(new MouseMotionAdapter() {
-				private int timesMouseMoved = 0;
-				public void mouseDragged(MouseEvent evt) {
-					drawingData.handleMouseDragged(evt);
-				}
-				public void mouseMoved(MouseEvent evt) {
-					if (timesMouseMoved < 15) {
-						timesMouseMoved++;
-					} else {
-						timesMouseMoved = 0;
-						DPCursor newCursor = dpCursor.getNew(evt.getX(), evt.getY());
-						if (!newCursor.equals(dpCursor)) {
-							dpCursor = newCursor;
-							setCursor(dpCursor.convertToCursor());
-						}
-					}
-				}
-			});
+			addMouseListener(new DPMouseListener());
+			addMouseMotionListener(new DPMouseMotionListener());
 		}
 
 
 		public void paintComponent(Graphics g) {
-			if (!drawingData.firstLayerAdded) {
-				drawingData.panelWidth = getWidth();
-				drawingData.panelHeight = getHeight();
-				System.out.println("Init: " + drawingData.panelHeight);
-				drawingSize = new Dimension(drawingData.panelWidth, drawingData.panelHeight);
-				drawingData.layers[0] = new Layer(drawingData.panelWidth, drawingData.panelHeight, "Layer 0");
-				drawingData.layers[0].id = drawingData.nextLayerID;
-				drawingData.nextLayerID++;
-				drawingData.firstLayerAdded = true;
+			if (!drawing.firstLayerAdded) {
+				drawing.panelWidth = getWidth();
+				drawing.panelHeight = getHeight();
+				drawingSize = new Dimension(drawing.panelWidth, drawing.panelHeight);
+				drawing.layers[0] = new Layer(drawing.panelWidth, drawing.panelHeight, "Layer 0");
+				drawing.layers[0].id = drawing.nextLayerID;
+				drawing.nextLayerID++;
+				drawing.firstLayerAdded = true;
 				controlPanel.refigureLayers();
 			}
 			super.paintComponent(g);
 			Graphics2D layerG;
 
-			synchronized(drawingData.curves) {
-				for (Curve c: drawingData.curves) {
+			synchronized(drawing.curves) {
+				for (Curve c: drawing.curves) {
 					if (!c.done) {
-						layerG = (Graphics2D)drawingData.layers[c.layer].i.getGraphics();
+						layerG = (Graphics2D)drawing.layers[c.layer].i.getGraphics();
 						layerG.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
 								RenderingHints.VALUE_ANTIALIAS_ON);
 						layerG.setColor(c.color);
-						drawingData.drawCurve(c, layerG);
+						drawing.drawCurve(c, layerG);
 					}
 				}
 			}
-			for (Layer layer: drawingData.layers) {
+			for (Layer layer: drawing.layers) {
 				if (layer.visible) g.drawImage(layer.i, 0, 0, this);
 			}
 		}
@@ -1669,7 +1736,7 @@ public class MainPanel extends JPanel {
 			float totalBrightness = 0;
 			for (Coord c: pixels) {
 				try {
-					brightness = getBrightness(drawingData.getColorAt(c.x, c.y));
+					brightness = getBrightness(drawing.getColorAt(c.x, c.y));
 					totalBrightness += brightness;
 					if (brightness > threshold) {
 						numPixelsBrighter++;
@@ -1691,7 +1758,7 @@ public class MainPanel extends JPanel {
 			int n = 0;
 			for (Coord c: pixels) {
 				try {
-					pixelColor = drawingData.getColorAt(c.x, c.y);
+					pixelColor = drawing.getColorAt(c.x, c.y);
 					totalPixelBrightness += getBrightness(pixelColor);
 					n++;
 				} catch (Exception e) {}
@@ -1715,340 +1782,6 @@ public class MainPanel extends JPanel {
 			newDPCursor.color = Color.black;
 			dpCursor = newDPCursor;
 			setCursor(newDPCursor.convertToCursor());
-		}
-
-	}
-
-	public class DrawingData {
-		MainPanel container = null;
-		public int panelWidth;
-		public int panelHeight;
-		BufferedReader incoming = null;
-		PrintWriter outgoing = null;
-		Color currentColor = Color.BLACK;
-		boolean firstLayerAdded = false;
-		boolean mouseDown = false;
-		int lastX;
-		int lastY;
-		int lineWidth;
-		boolean coordsInitialized = false;
-		Curve currentCurve = new Curve(-1, -1);
-		LinkedList<Curve> curves = new LinkedList<Curve>();
-		LinkedList<Curve> newCurves = new LinkedList<Curve>();
-		Layer[] layers = new Layer[1];
-		int nextLayerID = 0;
-
-		public DrawingData() {
-			layers[0] = new Layer(1, 1, "Layer 0");
-		}
-
-		public boolean layerExists(String name) {
-			for (Layer layer: layers) {
-				if (name.equals(layer.name)) {
-					return true;
-				}
-			}
-			return false;
-		}
-
-		public void swapLayers(int a, int b) {
-			menuBar.save.setEnabled(true);
-			Layer temp = layers[b];
-			layers[b] = layers[a];
-			layers[a] = temp;
-		}
-
-		public Layer insertLayer(int w, int h, String n, int insertionPoint) {
-			menuBar.save.setEnabled(true);
-			Layer[] newLayers = new Layer[layers.length+1];
-			newLayers[insertionPoint] = new Layer(w, h, n);
-			for (int i = 0; i < insertionPoint; i++) {
-				newLayers[i] = layers[i];
-			}
-			for (int i = insertionPoint + 1; i < newLayers.length; i++) {
-				newLayers[i] = layers[i-1]; 
-			}
-			layers = new Layer[newLayers.length];
-			System.arraycopy(newLayers, 0, layers, 0, newLayers.length);
-			nextLayerID++;
-			return layers[insertionPoint];
-		}
-
-		public Layer addLayer(int w, int h, String n) {
-			menuBar.save.setEnabled(true);
-			Layer[] newLayers = new Layer[layers.length+1];
-			System.arraycopy(layers, 0, newLayers, 0, layers.length);
-			layers = new Layer[newLayers.length];
-			System.arraycopy(newLayers, 0, layers, 0, newLayers.length);
-			layers[newLayers.length-1] = new Layer(w, h, n);
-			layers[newLayers.length-1].id = nextLayerID;
-			nextLayerID++;
-			return layers[newLayers.length-1];
-		}
-
-		public void drawCurve(Curve c, Graphics2D g) {
-			/*GeneralPath polyline = new GeneralPath(GeneralPath.WIND_EVEN_ODD, c.coords.length);
-       float[] points;
-       polyline.moveTo(c.coords[0].x, c.coords[0].y);
-       for (Coord coord : c.coords) {
-       System.out.println("x = " + coord.x +"; y = " + coord.y);
-       polyline.lineTo(coord.x, coord.y);
-       }*/
-			Coord lastCoord = c.coords[0];
-			g.setBackground(new Color(0, 0, 0, 0));
-			for (Coord coord : c.coords) {
-				if (!coord.drawn) {
-					for (Coord lineCoord: lineBetween(lastCoord, coord)) {
-						if (c.lineWidth == 1 && !c.erase) {
-							g.drawRect(lineCoord.x, lineCoord.y, 0, 0);
-						} else if (!c.erase) {
-							g.fillOval(lineCoord.x-c.lineWidth/2, lineCoord.y-c.lineWidth/2, c.lineWidth, c.lineWidth);
-						} else {
-							g.setBackground(new Color(0, 0, 0, 0));
-							g.clearRect(lineCoord.x-c.lineWidth/2, lineCoord.y-c.lineWidth/2, c.lineWidth, c.lineWidth);
-						}
-					}
-					coord.drawn = true;
-				}
-				lastCoord = coord;
-			}
-		}
-
-		public Curve startNewCurve(int x, int y, int lineWidth, Color color, boolean erase, int layer) {
-			Curve newCurve = new Curve(x, y, lineWidth, color, layer, erase);
-			synchronized(curves) {
-				curves.add(newCurve);
-			}
-			//newCurves.add(newCurve);
-			return newCurve;
-		}
-
-		public void addToCurve(int x, int y, Curve c) {
-			c.addPoint(x, y);
-			drawingPanel.repaint();
-		}
-		public Color getColorAt(int x, int y) {
-			Color newColor = Color.WHITE;
-			Color layerColor;
-			int alpha;
-			for (Layer layer: layers) {
-				alpha = (layer.i.getRGB(x,y)>>24) & 0xff;
-				layerColor = new Color(layer.i.getRGB(x, y));
-				if (layer.visible && alpha != 0) {
-					newColor = layerColor;
-				}
-			}
-			return newColor;
-		}
-		public void handleMouseDown(MouseEvent evt) {
-			int x = evt.getX();
-			int y = evt.getY();
-			if (!layers[controlPanel.getCurrentLayer()].visible && !menuBar.colorPicker.isSelected()) {
-				JOptionPane.showMessageDialog(null, "The current layer is invisible.", "Can't draw there", JOptionPane.ERROR_MESSAGE);
-			} else if (menuBar.colorPicker.isSelected()) {
-				if (x<drawingPanel.getWidth() && x>0 && y<drawingPanel.getHeight() && y>0)
-					userResponder.changeColor(getColorAt(x, y));
-			} else {
-				lineWidth = controlPanel.getLineWidth();
-				lastX = x;
-				lastY = y;
-				mouseDown = true;
-				boolean erase = menuBar.eraser.isSelected();
-				currentCurve = new Curve(lastX, lastY, lineWidth, currentColor, controlPanel.getCurrentLayer(), erase);
-				synchronized(curves) {
-					curves.add(currentCurve);
-				}
-				//newCurves.add(currentCurve);
-				if (netController!=null && netController.connected == true) {
-					netController.sendNewCurve(-1, lastX, lastY, lineWidth, currentColor, erase, controlPanel.getCurrentLayer());
-				}
-				drawingPanel.repaint();
-			}
-		}
-		public void handleMouseUp() {
-			mouseDown = false;
-			coordsInitialized = false;
-			currentCurve.done = true;
-		}
-		public void handleMouseDragged(MouseEvent evt) {
-			int x = evt.getX();
-			int y = evt.getY();
-			if (layers[controlPanel.getCurrentLayer()].visible && !menuBar.colorPicker.isSelected()) {
-				currentCurve.addPoint(x, y);
-				if (netController != null && netController.connected == true) {
-					netController.addToCurve(-1, x, y);
-				}
-				drawingPanel.repaint();
-			} else if (menuBar.colorPicker.isSelected()) {
-				if (x<drawingPanel.getWidth() && x>0 && y<drawingPanel.getHeight() && y>0)
-					userResponder.changeColor(getColorAt(x, y));
-			}
-		}
-		public void resizeAllLayers(Dimension newSize) {
-			for (Layer l: layers) {
-				System.out.println("Resizing layer "+ l.name);
-				l.resize(newSize);
-			}
-		}
-		public LinkedList<Coord> lineBetween(Coord pointA, Coord pointB) {
-			Coord pt1;
-			Coord pt2;
-			if (pointA.x<pointB.x) {
-				pt1 = pointA;
-				pt2 = pointB;
-			} else {
-				pt1 = pointB;
-				pt2 = pointA;
-			}
-
-			LinkedList<Coord> coords = new LinkedList<Coord>();
-			coords.add(pt1);
-
-			if (pt1.x == pt2.x) {
-				if (pt1.y < pt2.y) for (int y = pt1.y+1; y <= pt2.y; y++) coords.add(new Coord(pt1.x, y));
-				else for (int y = pt1.y-1; y >= pt2.y; y--) coords.add(new Coord(pt1.x, y)); 
-				return coords;
-			}
-
-			double slope = (double)(pt2.y-pt1.y)/(double)(pt2.x-pt1.x);
-
-			double oldY = pt1.y;
-			double newY;
-
-			for (int x = pt1.x+1; x <= pt2.x; x++) {
-				if (x == pt2.x) newY = pt2.y;
-				else newY = oldY + slope;
-				if (Math.abs(slope)<1) {
-					coords.add(new Coord(x, (int)newY));
-				}
-				else {
-					if (slope > 0) {
-						for (int y = (int)oldY+1; y <= (int)newY; y++) {
-							coords.add(new Coord(x, y));
-						}
-					} else {
-						for (int y = (int)oldY-1; y >= (int)newY; y--) {
-							coords.add(new Coord(x, y));
-						}
-					}
-				}
-				oldY = newY;
-			}
-			return coords;
-		}
-	}
-
-	public class Coord { 
-		public int x; 
-		public int y; 
-		public boolean drawn = false;
-		public Coord(int x, int y) { 
-			this.x = x; 
-			this.y = y; 
-		}
-	}
-
-	public class Layer {
-		BufferedImage i;
-		String name;
-		int creator = -1;
-		int id;
-		boolean visible = true;
-
-		public Layer(int width, int height, String n) {
-			menuBar.save.setEnabled(true);
-			i = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-			name = n;
-		}
-		public Layer(BufferedImage img, String n) {
-			menuBar.save.setEnabled(true);
-			i = img;
-			name = n;
-		}
-		public Layer copy() {
-			return (new Layer(this.i, this.name));
-		}
-		public void setVisible(Boolean v) {
-			visible = v;
-			drawingPanel.repaint();
-		}
-		public void resize(Dimension newSize) {
-			BufferedImage resizedImage = new BufferedImage(newSize.width, newSize.height, BufferedImage.TYPE_INT_ARGB);
-			for (int x = 0; x<i.getWidth(); x++) {
-				for (int y = 0; y < i.getHeight(); y++) {
-					int rgb = i.getRGB(x, y);
-					resizedImage.setRGB(x, y, rgb);
-				}
-			}
-			i = resizedImage;
-		}
-	}
-
-	public class Curve {
-		public Coord[] coords;
-		public int lineWidth;
-		public Color color = Color.BLACK;
-		public int layer = 0;
-		public boolean done = false;
-		public boolean erase = false;
-
-		public Curve() {
-			menuBar.save.setEnabled(true);
-			coords = new Coord[0];
-		}
-		public Curve(int x, int y) {
-			menuBar.save.setEnabled(true);
-			lineWidth = 1;
-			coords = new Coord[1];
-			coords[0] = new Coord(x, y);
-		}
-		public Curve(int x, int y, int t) {
-			menuBar.save.setEnabled(true);
-			lineWidth = t;
-			coords = new Coord[1];
-			coords[0] = new Coord(x, y);
-		}
-		public Curve(int x, int y, int w, Color c) {
-			menuBar.save.setEnabled(true);
-			lineWidth = w;
-			coords = new Coord[1];
-			coords[0] = new Coord(x, y);
-			color = c;
-		}         
-		public Curve(int x, int y, int w, Color c, int l) {
-			menuBar.save.setEnabled(true);
-			lineWidth = w;
-			coords = new Coord[1];
-			coords[0] = new Coord(x, y);
-			color = c;
-			layer = l;
-		}
-		public Curve(int x, int y, int w, Color c, int l, boolean e) {
-			menuBar.save.setEnabled(true);
-			lineWidth = w;
-			coords = new Coord[1];
-			coords[0] = new Coord(x, y);
-			color = c;
-			layer = l;
-			erase = e;
-		}
-
-		public Curve(int x, int y, int w, Color c, boolean e) {
-			menuBar.save.setEnabled(true);
-			lineWidth = w;
-			coords = new Coord[1];
-			coords[0] = new Coord(x, y);
-			color = c;
-			erase = e;
-		}
-
-		public void addPoint(int x, int y) {
-			menuBar.save.setEnabled(true);
-			Coord[] coordsNew = new Coord[coords.length+1];
-			System.arraycopy(coords, 0, coordsNew, 0, coords.length);
-			coordsNew[coords.length] = new Coord(x, y);
-			coords = new Coord[coordsNew.length];
-			System.arraycopy(coordsNew, 0, coords, 0, coordsNew.length);
 		}
 	}
 }
