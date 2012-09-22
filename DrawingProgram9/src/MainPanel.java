@@ -1655,7 +1655,6 @@ public class MainPanel extends JPanel {
 				synchronized(drawing.curves) {
 					drawing.curves.add(drawing.currentCurve);
 				}
-				//newCurves.add(currentCurve);
 				if (netController!=null && netController.connected == true) {
 					netController.sendNewCurve(-1, lastX, lastY, lineWidth, drawing.currentColor, erase, controlPanel.getCurrentLayer());
 				}
