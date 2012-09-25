@@ -1,5 +1,6 @@
 import java.awt.event.*;
 import java.awt.*;
+
 import javax.swing.*;
 import javax.swing.event.*;
 import java.util.LinkedList;
@@ -7,9 +8,7 @@ import java.net.*;
 import java.io.*;
 import java.awt.image.*;
 import java.io.File;
-import java.util.Iterator;
 import javax.imageio.*;
-import javax.imageio.stream.*; 
 
 public class MainPanel extends JPanel {
 
@@ -158,7 +157,7 @@ public class MainPanel extends JPanel {
 		public UserResponder () {
 			newHandler = new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
-					DrawingWindow.newWindow();
+					DrawingProgram.newWindow();
 				}
 			};
 			exportHandler = new ActionListener() {
@@ -178,7 +177,7 @@ public class MainPanel extends JPanel {
 			};
 			openHandler = new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
-					DrawingWindow.open();
+					DrawingProgram.open();
 				}
 			};
 			connectHandler = new ActionListener() {
@@ -523,170 +522,6 @@ public class MainPanel extends JPanel {
 		}
 	} 
 
-	public class FileHandler {
-
-		private String generateLayerName(String init, Drawing newDrawing) {
-			int num = 0;
-			String name = init;
-			while (newDrawing.layerExists(name)) {
-				num = num + 1;
-				name = init + "_" + num;
-			}
-			return name;
-		}
-
-		private void insertImage(BufferedImage img, String name, Drawing newDrawing) {
-			int rgb;
-			int w;
-			int h;
-			Layer newLayer;
-			name = generateLayerName(name, newDrawing);
-			w = img.getWidth();
-			h = img.getHeight();
-			newLayer = newDrawing.addLayer(w, h, name);
-			for (Layer l: newDrawing.layers) {
-				System.out.println("Layer in newDrawing1 named: " + l.name);
-			}
-			newLayer.i = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-			for (int x = 0; x < w; x++) {
-				for (int y = 0; y < h; y++) {
-					rgb = img.getRGB(x, y);
-					newLayer.i.setRGB(x, y, rgb);
-				}
-			}
-			menuBar.save.setEnabled(true);
-		}
-
-		public Drawing openFile (File file) throws FileNotFoundException, IOException {
-			String currentLayerName = "";
-			String chunk;
-			FileReader fr;
-			String[] chunkSplit;
-			BufferedReader br;
-			BufferedImage img;
-			String imageText = "";
-			Drawing newDrawing = new Drawing();
-			newDrawing.layers = new Layer[0];
-			newDrawing.firstLayerAdded = true; //Necessary so we don't overwrite our new layer the first time we repaint drawingPanel 
-			fr = new FileReader(file);
-			br = new BufferedReader(fr);
-			while ((chunk = getChunk(br)) != null) {
-				if (chunk.startsWith("NAMEIS")) {
-					if (!imageText.equals("!")) {
-						InputStream is = new ByteArrayInputStream(imageText.getBytes());
-						img = ImageIO.read(is);
-						insertImage(img, currentLayerName, newDrawing);
-					} 
-					imageText = "";
-					chunkSplit = chunk.split(":");
-					int len = chunkSplit[1].length();
-					currentLayerName = chunkSplit[1].substring(0, len-1);
-
-				} else {
-					imageText = imageText + chunk;
-				}
-			}
-			if (currentLayerName.equals("")) {
-				currentLayerName = "Imported Image";
-			}
-			InputStream is = new ByteArrayInputStream(imageText.getBytes());
-			img = ImageIO.read(is);
-			insertImage(img, currentLayerName, newDrawing);
-
-			newDrawing.panelWidth = img.getWidth();
-			newDrawing.panelHeight = img.getHeight();
-
-			return newDrawing;
-		}
-
-		private String getChunk(BufferedReader br) {
-			//Customized function for getting the next "chunk" of text from a BufferedReader. 
-			//Similar to readLine(), but uses '!' as a delimiter between chunks. readLine has 
-			//multiple delimiters (linefeeds, carriage returns, linefeeds+carriage returns), 
-			//and there doesn't seem to be any way to tell which one ended a particular line. 
-			//Using readLine would thus lead to data loss if used to read image files.
-			int i = -1;
-			try {
-				i = br.read();
-				if (i == -1) {
-					System.out.println("getChunk returning null");
-					return null;
-				}
-			} catch (Exception e) {
-				System.out.println("Error reading file 1: " + e);
-			}
-			char c = (char)i;
-			String s = c + "";
-			while (i != -1 && c != '!') {
-				try {
-					br.mark(1);
-					i = br.read();
-				} catch (Exception e) {
-					System.out.println("Error reading file 2: " + e);
-				}
-				c = (char)i;
-				s = s + c;
-			}
-			if (i == -1) {
-				try {
-					br.reset();
-				} catch (Exception e) {
-					System.out.println("Error reading file 3: " + e);
-				}
-				return s;
-			} else return (s);
-		}
-
-
-		public void writeDrawingToFile(File file, Drawing drawingToSave) throws IOException {
-			FileWriter fw;
-			PrintWriter pw;
-			Iterator<ImageWriter> iter;
-			ImageWriter writer;
-			ImageWriteParam iwp;
-			FileImageOutputStream output;
-			IIOImage img;
-			iter = ImageIO.getImageWritersByFormatName("png");
-			writer = (ImageWriter)iter.next();
-			iwp = writer.getDefaultWriteParam();
-			output = new FileImageOutputStream(file);
-			writer.setOutput(output);
-			fw = new FileWriter(file);
-			pw = new PrintWriter(fw);
-			synchronized(file) {
-				for (Layer layer: drawingToSave.layers) {
-					pw.print("!NAMEIS:" + layer.name + "!");
-					pw.close();
-					output.seek(file.length());
-					writer.setOutput(output);
-					img = new IIOImage(layer.i, null, null);
-					writer.write(null, img, iwp);
-					fw = new FileWriter(file, true);
-					pw = new PrintWriter(fw);
-				}
-			}
-			pw.close();
-			writer.dispose();
-
-		}
-
-		public void exportFile(File file, Drawing d) {
-			BufferedImage toSave = new BufferedImage(d.panelWidth, d.panelHeight, BufferedImage.TYPE_INT_RGB);
-			for (int x = 0; x < d.panelWidth; x++) {
-				for (int y = 0; y < d.panelHeight; y++) {
-					toSave.setRGB(x, y, d.getColorAt(x, y).getRGB());
-				}
-			}
-			try {
-				ImageIO.write(toSave, "png", file);
-				System.out.println("File " + file.getName() + " has been successfully written.");
-			} catch (Exception e) {
-				System.out.println("Error writing file: " + e);
-			}
-		}
-
-	}
-
 	public class Menu extends JMenuBar {
 
 		JMenu fileMenu = new JMenu("File");
@@ -748,26 +583,6 @@ public class MainPanel extends JPanel {
 			add(fileMenu);
 			add(drawingMenu);
 			add(networkMenu);
-		}
-	}
-
-	public class ConsolePanel extends JPanel {   
-		JTextArea console;
-		synchronized public void tellUser(String s) {
-			console.append(s+"\n\n");
-			console.setCaretPosition(console.getText().length());
-		}
-		public ConsolePanel() {
-			setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
-			setLayout(new BorderLayout());
-			console = new JTextArea(5, 15);
-			JScrollPane consoleScroller = new JScrollPane(console);
-			console.setEditable(false);
-			console.setLineWrap(true);
-			add(consoleScroller, BorderLayout.CENTER);
-			tellUser("*************");
-			tellUser("  Welcome!  ");
-			tellUser("*************");
 		}
 	}
 
@@ -1686,7 +1501,6 @@ public class MainPanel extends JPanel {
 			addMouseMotionListener(new DPMouseMotionListener());
 		}
 
-
 		public void paintComponent(Graphics g) {
 			if (!drawing.firstLayerAdded) {
 				drawing.panelWidth = getWidth();
@@ -1708,7 +1522,7 @@ public class MainPanel extends JPanel {
 						layerG.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
 								RenderingHints.VALUE_ANTIALIAS_ON);
 						layerG.setColor(c.color);
-						drawing.drawCurve(c, layerG);
+						drawCurve(c, layerG);
 					}
 				}
 			}
@@ -1732,11 +1546,9 @@ public class MainPanel extends JPanel {
 			float brightness;
 			int numPixelsCounted = 0;
 			int numPixelsBrighter = 0;
-			float totalBrightness = 0;
 			for (Coord c: pixels) {
 				try {
 					brightness = getBrightness(drawing.getColorAt(c.x, c.y));
-					totalBrightness += brightness;
 					if (brightness > threshold) {
 						numPixelsBrighter++;
 					}
@@ -1775,12 +1587,87 @@ public class MainPanel extends JPanel {
 
 		public void setNewCursor() {
 			//Function to be called when we need to change the cursor, but it isn't 
-			//necessarily in the drawingPanel, so we can't test the pixels that it's over.
+			//necessarily in the drawingPanel, so we can't test the pixels underneath it.
 			//Just set to black.
 			DPCursor newDPCursor = dpCursor.getNew(0, 0);
 			newDPCursor.color = Color.black;
 			dpCursor = newDPCursor;
 			setCursor(newDPCursor.convertToCursor());
+		}
+		
+		private LinkedList<Coord> lineBetween(Coord pointA, Coord pointB) {
+			Coord pt1;
+			Coord pt2;
+			if (pointA.x<pointB.x) {
+				pt1 = pointA;
+				pt2 = pointB;
+			} else {
+				pt1 = pointB;
+				pt2 = pointA;
+			}
+
+			LinkedList<Coord> coords = new LinkedList<Coord>();
+			coords.add(pt1);
+
+			if (pt1.x == pt2.x) {
+				if (pt1.y < pt2.y) for (int y = pt1.y+1; y <= pt2.y; y++) coords.add(new Coord(pt1.x, y));
+				else for (int y = pt1.y-1; y >= pt2.y; y--) coords.add(new Coord(pt1.x, y)); 
+				return coords;
+			}
+
+			double slope = (double)(pt2.y-pt1.y)/(double)(pt2.x-pt1.x);
+
+			double oldY = pt1.y;
+			double newY;
+
+			for (int x = pt1.x+1; x <= pt2.x; x++) {
+				if (x == pt2.x) newY = pt2.y;
+				else newY = oldY + slope;
+				if (Math.abs(slope)<1) {
+					coords.add(new Coord(x, (int)newY));
+				}
+				else {
+					if (slope > 0) {
+						for (int y = (int)oldY+1; y <= (int)newY; y++) {
+							coords.add(new Coord(x, y));
+						}
+					} else {
+						for (int y = (int)oldY-1; y >= (int)newY; y--) {
+							coords.add(new Coord(x, y));
+						}
+					}
+				}
+				oldY = newY;
+			}
+			return coords;
+		}
+		
+		public void drawCurve(Curve c, Graphics2D g) {
+			/*GeneralPath polyline = new GeneralPath(GeneralPath.WIND_EVEN_ODD, c.coords.length);
+       float[] points;
+       polyline.moveTo(c.coords[0].x, c.coords[0].y);
+       for (Coord coord : c.coords) {
+       System.out.println("x = " + coord.x +"; y = " + coord.y);
+       polyline.lineTo(coord.x, coord.y);
+       }*/
+			Coord lastCoord = c.coords[0];
+			g.setBackground(new Color(0, 0, 0, 0));
+			for (Coord coord : c.coords) {
+				if (!coord.drawn) {
+					for (Coord lineCoord: lineBetween(lastCoord, coord)) {
+						if (c.lineWidth == 1 && !c.erase) {
+							g.drawRect(lineCoord.x, lineCoord.y, 0, 0);
+						} else if (!c.erase) {
+							g.fillOval(lineCoord.x-c.lineWidth/2, lineCoord.y-c.lineWidth/2, c.lineWidth, c.lineWidth);
+						} else {
+							g.setBackground(new Color(0, 0, 0, 0));
+							g.clearRect(lineCoord.x-c.lineWidth/2, lineCoord.y-c.lineWidth/2, c.lineWidth, c.lineWidth);
+						}
+					}
+					coord.drawn = true;
+				}
+				lastCoord = coord;
+			}
 		}
 	}
 }

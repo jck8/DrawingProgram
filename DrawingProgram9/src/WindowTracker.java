@@ -9,6 +9,7 @@ class WindowTracker extends WindowAdapter {
 		this.initFrame = initFrame;
 	}
 	public void windowOpened(WindowEvent e) {
+		System.out.println(initFrame);
 		if (initFrame.isVisible() && (e.getSource() instanceof DrawingWindow)) {
 			initFrame.setVisible(false);
 		}
