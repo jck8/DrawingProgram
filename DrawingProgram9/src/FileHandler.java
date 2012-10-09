@@ -85,8 +85,8 @@ import javax.imageio.stream.FileImageOutputStream;
 			img = ImageIO.read(is);
 			insertImage(img, currentLayerName, newDrawing);
 
-			newDrawing.panelWidth = img.getWidth();
-			newDrawing.panelHeight = img.getHeight();
+			newDrawing.width = img.getWidth();
+			newDrawing.height = img.getHeight();
 
 			return newDrawing;
 		}
@@ -163,9 +163,9 @@ import javax.imageio.stream.FileImageOutputStream;
 		}
 
 		public void exportFile(File file, Drawing d) {
-			BufferedImage toSave = new BufferedImage(d.panelWidth, d.panelHeight, BufferedImage.TYPE_INT_RGB);
-			for (int x = 0; x < d.panelWidth; x++) {
-				for (int y = 0; y < d.panelHeight; y++) {
+			BufferedImage toSave = new BufferedImage(d.width, d.height, BufferedImage.TYPE_INT_RGB);
+			for (int x = 0; x < d.width; x++) {
+				for (int y = 0; y < d.height; y++) {
 					toSave.setRGB(x, y, d.getColorAt(x, y).getRGB());
 				}
 			}
