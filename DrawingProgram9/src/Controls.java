@@ -14,13 +14,13 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 
-public class Controls {
+public class Controls implements DrawingListener {
 
 	ControlPanel2 controlPanel;
 	Menu2 menuBar;
 	ConsolePanel consolePanel;
 	Drawing drawing;
-	MainPanel.NetController netController;
+	NetController netController;
 	MainPanel.DrawingPanel drawingPanel;
 
 	boolean connectedToServer = false;
@@ -32,18 +32,27 @@ public class Controls {
 	DrawingActions drawingActions = new DrawingActions();
 	NetActions netActions = new NetActions();
 
-	public Controls(ControlPanel2 controlPanel, 
-			ConsolePanel consolePanel, 
-			MainPanel.NetController netController, 
-			MainPanel.DrawingPanel drawingPanel,
-			Drawing drawing
+	public Controls( 
+			ConsolePanel _consolePanel, 
+			NetController _netController, 
+			MainPanel.DrawingPanel _drawingPanel,
+			Drawing _drawing
 			)
 	{
 		MyActionListeners mal = new MyActionListeners();
 		menuBar = new Menu2(mal);
+		
+		consolePanel = _consolePanel;
+		netController = _netController;
+		drawingPanel = _drawingPanel;
+		drawing = _drawing;
 		controlPanel = new ControlPanel2(menuBar, drawing, mal);
 	}
 
+	public void drawingChanged() {
+		menuBar.save.setEnabled(true);
+	}
+	
 	public Menu2 getMenu() {
 		return menuBar;
 	}
@@ -159,6 +168,7 @@ public class Controls {
 		}
 
 		public void reactToLayerSelection() {
+			System.out.println(drawing);
 			Layer currentLayer = drawing.layers[controlPanel.getCurrentLayer()];
 			if (menuBar.layerVisible.isSelected() != currentLayer.visible) {
 				menuBar.layerVisible.setSelected(currentLayer.visible);

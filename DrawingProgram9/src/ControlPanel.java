@@ -80,6 +80,8 @@ public class ControlPanel extends JPanel {
 			return 1;
 		}
 	}
+	
+	public ControlPanel() {} //This is here so ControlPanel2 can extend this class. Just temporary.
 
 	public ControlPanel(Menu m, Drawing d, ActionListeners u) {
 		menuBar = m;

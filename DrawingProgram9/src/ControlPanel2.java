@@ -8,11 +8,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-public class ControlPanel2 extends JPanel {
+public class ControlPanel2 extends ControlPanel {
 	/*Dependencies that should be worked on*/
 	Menu2 menuBar;
 	Drawing drawing;
-	MainPanel.UserResponder userResponder;
+	ActionListeners userResponder;
 	
 	public JTextField lineWidthField;
 	boolean serverRunning = false;
@@ -45,6 +45,7 @@ public class ControlPanel2 extends JPanel {
 		return layerSelect.getSelectedIndex();
 	}
 	public void refigureLayers() {
+		System.out.println("Working 10");
 		Object oldItem = layerSelect.getSelectedItem();
 		layerSelect.removeAllItems();
 		for (Layer layer: drawing.layers) {
@@ -56,6 +57,7 @@ public class ControlPanel2 extends JPanel {
 			layerSelect.setSelectedItem(oldItem);
 		}
 		refigureLayerButtons();
+		System.out.println("Working 11");
 	}
 	public void refigureLayerButtons() {
 		if (getCurrentLayer() >= getMaxLayer()) {
@@ -84,7 +86,7 @@ public class ControlPanel2 extends JPanel {
 	public ControlPanel2(Menu2 m, Drawing d, ActionListeners u) {
 		menuBar = m;
 		drawing = d;
-		userResponder = (MainPanel.UserResponder)u;
+		userResponder = u;
 		
 		setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
 		setLayout(new FlowLayout());
