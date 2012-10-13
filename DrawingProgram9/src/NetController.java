@@ -26,13 +26,13 @@ public class NetController {
 	ControlPanel controlPanel; 
 	Drawing drawing;
 	MainPanel.DrawingPanel drawingPanel;
-	MainPanel.UserResponder userResponder;
+	ActionListeners userResponder;
 	
 	public NetController(ConsolePanel _consolePanel, 
 							ControlPanel _controlPanel, 
 							Drawing _drawing, 
 							MainPanel.DrawingPanel _drawingPanel,
-							MainPanel.UserResponder _userResponder) 
+							ActionListeners _userResponder) 
 	{
 		netController = this;
 		controlPanel = _controlPanel;

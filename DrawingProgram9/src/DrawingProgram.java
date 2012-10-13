@@ -39,7 +39,7 @@ public class DrawingProgram {
 						if (wind instanceof DrawingWindow) {
 							dw = (DrawingWindow)wind;
 							if (dw.mainPanel != null) {
-								dw.mainPanel.userResponder.save();
+								dw.mainPanel.controls.fileActions.save();
 							}
 						}
 						break;		

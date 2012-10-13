@@ -45,9 +45,9 @@ public class ControlPanel2 extends ControlPanel {
 		return layerSelect.getSelectedIndex();
 	}
 	public void refigureLayers() {
-		System.out.println("Working 10");
 		Object oldItem = layerSelect.getSelectedItem();
 		layerSelect.removeAllItems();
+		System.out.println("DRAWING=" + drawing);
 		for (Layer layer: drawing.layers) {
 			layerSelect.insertItemAt(layer.name, 0);
 		}
@@ -57,7 +57,6 @@ public class ControlPanel2 extends ControlPanel {
 			layerSelect.setSelectedItem(oldItem);
 		}
 		refigureLayerButtons();
-		System.out.println("Working 11");
 	}
 	public void refigureLayerButtons() {
 		if (getCurrentLayer() >= getMaxLayer()) {

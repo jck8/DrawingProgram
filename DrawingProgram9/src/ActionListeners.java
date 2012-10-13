@@ -12,7 +12,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-public class ActionListeners {
+public abstract class ActionListeners {
 	
 	ActionListener newHandler;
 	ActionListener openHandler;
@@ -34,6 +34,13 @@ public class ActionListeners {
 	ActionListener layerVisibleHandler;
 	ActionListener layerSelectHandler;
 	DocumentListener changeWidthHandler;
+	
+	public void setControlsToNoConnection() {
+	}
+	public void setControlsToServerRunning() {
+	}
+	public void setControlsToConnectedToServer() {
+	}
 
 	
 	/*ActionListener newHandler;

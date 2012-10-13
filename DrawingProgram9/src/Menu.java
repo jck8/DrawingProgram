@@ -24,7 +24,7 @@ public class Menu extends JMenuBar {
 	JMenuItem layerVisible = new JCheckBoxMenuItem("Layer visible");
 	JMenuItem connect = new JMenuItem("Connect...");
 	JMenuItem server = new JMenuItem("Start server...");
-	public Menu(MainPanel.UserResponder userResponder) {
+	public Menu(ActionListeners userResponder) {
 		newDoc.addActionListener(userResponder.newHandler);
 		open.addActionListener(userResponder.openHandler);
 		save.addActionListener(userResponder.saveHandler);

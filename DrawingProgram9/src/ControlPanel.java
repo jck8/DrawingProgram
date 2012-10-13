@@ -12,7 +12,7 @@ public class ControlPanel extends JPanel {
 	/*Dependencies that should be worked on*/
 	Menu menuBar;
 	Drawing drawing;
-	MainPanel.UserResponder userResponder;
+	ActionListeners userResponder;
 	
 	public JTextField lineWidthField;
 	boolean serverRunning = false;
@@ -86,7 +86,7 @@ public class ControlPanel extends JPanel {
 	public ControlPanel(Menu m, Drawing d, ActionListeners u) {
 		menuBar = m;
 		drawing = d;
-		userResponder = (MainPanel.UserResponder)u;
+		userResponder = u;
 		
 		setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
 		setLayout(new FlowLayout());

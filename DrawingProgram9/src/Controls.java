@@ -31,7 +31,9 @@ public class Controls implements DrawingListener {
 	FileActions fileActions = new FileActions();
 	DrawingActions drawingActions = new DrawingActions();
 	NetActions netActions = new NetActions();
-
+	
+	MyActionListeners myActionListeners = new MyActionListeners();
+;
 	public Controls( 
 			ConsolePanel _consolePanel, 
 			NetController _netController, 
@@ -39,16 +41,20 @@ public class Controls implements DrawingListener {
 			Drawing _drawing
 			)
 	{
-		MyActionListeners mal = new MyActionListeners();
-		menuBar = new Menu2(mal);
-		
+
 		consolePanel = _consolePanel;
 		netController = _netController;
 		drawingPanel = _drawingPanel;
 		drawing = _drawing;
-		controlPanel = new ControlPanel2(menuBar, drawing, mal);
+		menuBar = new Menu2(myActionListeners);
+		controlPanel = new ControlPanel2(menuBar, drawing, myActionListeners);
+
 	}
 
+	public MyActionListeners getActionListener() {
+		return myActionListeners;
+	}
+	
 	public void drawingChanged() {
 		menuBar.save.setEnabled(true);
 	}
@@ -95,7 +101,7 @@ public class Controls implements DrawingListener {
 		connectedToServer = true;
 	}
 
-	private class DrawingActions {
+	class DrawingActions {
 
 		public void colorPickerToggle() {
 			menuBar.brush.setSelected(false);
@@ -206,7 +212,7 @@ public class Controls implements DrawingListener {
 		}
 	}
 
-	private class NetActions {
+	class NetActions {
 		public void showConnectDialog() {
 			ConnectPanel connectPanel = new ConnectPanel();
 			int result = JOptionPane.showConfirmDialog(null, connectPanel, "Enter connection details...", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
@@ -271,7 +277,7 @@ public class Controls implements DrawingListener {
 		}
 	}
 
-	private class FileActions {
+	class FileActions {
 		File currentFile = null;
 		FileHandler fileHandler = new FileHandler();
 
@@ -332,6 +338,33 @@ public class Controls implements DrawingListener {
 	}
 
 	public class MyActionListeners extends ActionListeners {
+		
+		public void setControlsToNoConnection() {
+			controlPanel.serverButton.setEnabled(true);
+			controlPanel.connectButton.setEnabled(true);
+			controlPanel.serverButton.setText("Start server");
+			controlPanel.connectButton.setText("Connect...");
+			serverRunning = false;
+			connectedToServer = false;
+			System.out.println("Set controls to no connection");
+		}
+		public void setControlsToServerRunning() {
+			controlPanel.serverButton.setEnabled(true);
+			controlPanel.connectButton.setEnabled(false);
+			controlPanel.serverButton.setText("Stop server");
+			controlPanel.connectButton.setText("Connect...");
+			serverRunning = true;
+			connectedToServer = false;
+		}
+		public void setControlsToConnectedToServer() {
+			controlPanel.serverButton.setEnabled(false);
+			controlPanel.connectButton.setEnabled(true);
+			controlPanel.serverButton.setText("Start server");
+			controlPanel.connectButton.setText("End connection");
+			serverRunning = false;
+			connectedToServer = true;
+		}
+
 		public MyActionListeners() {
 			newHandler = new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
@@ -442,6 +475,7 @@ public class Controls implements DrawingListener {
 					drawingPanel.setNewCursor();
 				}
 			};
+			
 		}
 		
 	}
